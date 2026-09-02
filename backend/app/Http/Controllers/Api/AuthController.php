@@ -91,6 +91,7 @@ class AuthController extends Controller
         }
 
         abort_unless($user->is_active, 403, 'Akun Anda tidak aktif.');
+        abort_if($user->tenant?->status === 'suspended', 403, 'Akun perusahaan Anda sedang disuspend. Hubungi admin jstock.');
 
         $token = $user->createToken('auth')->plainTextToken;
 

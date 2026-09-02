@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ProductController;
@@ -45,4 +46,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/transactions/{transaction}/approve', [TransactionController::class, 'approve'])->middleware('permission:transactions.approve');
     Route::patch('/transactions/{transaction}/reject', [TransactionController::class, 'reject'])->middleware('permission:transactions.approve');
     Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->middleware('permission:transactions.delete');
+
+    Route::prefix('admin')->middleware('permission:admin.tenants.view')->group(function () {
+        Route::get('/tenants', [AdminTenantController::class, 'index']);
+        Route::get('/tenants/{tenant}', [AdminTenantController::class, 'show']);
+        Route::patch('/tenants/{tenant}/suspend', [AdminTenantController::class, 'suspend']);
+        Route::patch('/tenants/{tenant}/activate', [AdminTenantController::class, 'activate']);
+        Route::get('/stats', [AdminTenantController::class, 'stats']);
+    });
 });
