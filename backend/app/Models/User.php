@@ -42,4 +42,19 @@ class User extends Authenticatable
     {
         return $this->role === 'owner';
     }
+
+    /**
+     * @return array<int, string>
+     */
+    public function permissions(): array
+    {
+        return config("permissions.{$this->role}", []);
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        $permissions = $this->permissions();
+
+        return in_array('*', $permissions, true) || in_array($permission, $permissions, true);
+    }
 }

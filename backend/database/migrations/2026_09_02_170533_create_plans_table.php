@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->decimal('price', 12, 2)->default(0);
+            $table->decimal('price', 12, 2)->nullable();
             $table->unsignedInteger('max_users')->nullable();
             $table->unsignedInteger('max_transactions_per_month')->nullable();
             $table->json('features')->nullable();

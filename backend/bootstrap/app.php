@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\IdentifyTenant;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', [
             IdentifyTenant::class,
         ]);
+
+        $middleware->alias([
+            'permission' => CheckPermission::class,
+        ]);
+
+        // jstock is an API-only backend: unauthenticated requests must
+        // always receive a JSON 401, never a redirect to a "login" route.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
