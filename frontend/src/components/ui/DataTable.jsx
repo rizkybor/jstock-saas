@@ -3,8 +3,6 @@
  * Scrolls horizontally in its own container so the page body never does.
  * A "No." index column is prepended automatically (disable with showIndex={false}).
  * Pass startIndex (0-based) when paginating so numbering continues across pages.
- * Always renders on a fixed white surface (see surface-fixed-* tokens) regardless
- * of light/dark mode, so tabular data stays maximally legible.
  */
 export default function DataTable({
   columns,
@@ -19,14 +17,14 @@ export default function DataTable({
     : columns;
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-surface-fixed-border bg-surface-fixed shadow-sm">
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
       <table className="w-full min-w-max border-collapse text-sm">
         <thead>
-          <tr className="bg-surface-fixed-2">
+          <tr className="bg-surface-2">
             {allColumns.map((col) => (
               <th
                 key={col.key}
-                className="whitespace-nowrap border-b border-surface-fixed-border px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-surface-fixed-ink-muted"
+                className="whitespace-nowrap border-b border-border px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted"
               >
                 {col.header}
               </th>
@@ -36,18 +34,15 @@ export default function DataTable({
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td colSpan={allColumns.length} className="px-3 py-8 text-center text-surface-fixed-ink-muted">
+              <td colSpan={allColumns.length} className="px-3 py-8 text-center text-ink-muted">
                 {emptyMessage}
               </td>
             </tr>
           )}
           {rows.map((row, index) => (
-            <tr
-              key={rowKey(row)}
-              className="border-b border-surface-fixed-border text-surface-fixed-ink transition-colors last:border-0 hover:bg-surface-fixed-2"
-            >
+            <tr key={rowKey(row)} className="border-b border-border transition-colors last:border-0 hover:bg-surface-2">
               {allColumns.map((col) => (
-                <td key={col.key} className="px-3 py-2">
+                <td key={col.key} className="px-3 py-2 text-ink">
                   {col.render ? col.render(row, index) : row[col.key]}
                 </td>
               ))}
