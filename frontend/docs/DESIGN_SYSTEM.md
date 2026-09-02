@@ -61,7 +61,7 @@ import { Alert, Badge, Button, Card, DataTable, EmptyState, Input, PageHeader, S
 | `Input` / `Select` | Field form dengan label + error/hint bawaan | `label`, `error`, `hint`, plus semua prop native `<input>`/`<select>` |
 | `Badge` | Status pill (transaksi, aktif/nonaktif) | `status` — lihat tabel semantik di atas |
 | `Card` | Kontainer section (form, ringkasan) | `title`, `action` (slot kanan, mis. tombol) |
-| `DataTable` | Tabel data generik, scroll horizontal otomatis | `columns` (`{key, header, render?(row)}`), `rows`, `rowKey(row)`, `emptyMessage` |
+| `DataTable` | Tabel data generik, scroll horizontal otomatis, kolom "No." otomatis | `columns` (`{key, header, render?(row, index)}`), `rows`, `rowKey(row)`, `emptyMessage`, `showIndex` (default `true`) |
 | `PageHeader` | Judul halaman + deskripsi + aksi utama | `title`, `description`, `action` |
 | `EmptyState` | Placeholder saat data/fitur belum ada | `title`, `description`, `action` |
 | `Alert` | Pesan error/sukses/info sebaris | `tone`: `danger` \| `success` \| `info`; render `null` kalau `children` kosong — aman dipakai langsung dengan state error (`<Alert>{error}</Alert>`) |
@@ -83,6 +83,10 @@ if (can("clients.delete")) {
 ```
 
 Kolom aksi yang butuh permission ditambahkan **secara kondisional lewat `can()` dari `useAuth()`**, bukan disembunyikan dengan CSS — supaya kolom "Aksi" tidak muncul kosong untuk role yang tidak berhak (lihat `ClientsPage.jsx` / `TransactionsPage.jsx`).
+
+Setiap tabel otomatis dapat kolom **No.** di paling kiri berisi nomor urut baris (1, 2, 3, ...) — matikan lewat `showIndex={false}` kalau memang tidak relevan (jarang).
+
+**Konvensi cursor**: semua elemen yang bisa diklik (`Button`, `Select`, nav sidebar, tombol hamburger/logout) memakai `cursor-pointer` secara eksplisit — jangan andalkan default browser, karena beberapa reset CSS bisa mengubahnya jadi `cursor: default` pada elemen non-`<a>`.
 
 ## 5. Layout & Responsivitas
 

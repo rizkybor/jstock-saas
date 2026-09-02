@@ -20,7 +20,7 @@ export default function AppLayout() {
       {menuOpen && (
         <button
           aria-label="Tutup menu"
-          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          className="fixed inset-0 z-30 cursor-pointer bg-black/30 lg:hidden"
           onClick={() => setMenuOpen(false)}
         />
       )}
@@ -36,7 +36,7 @@ export default function AppLayout() {
           </span>
           <button
             aria-label="Tutup menu"
-            className="text-ink-muted lg:hidden"
+            className="cursor-pointer text-ink-muted lg:hidden"
             onClick={() => setMenuOpen(false)}
           >
             ✕
@@ -48,7 +48,7 @@ export default function AppLayout() {
               <Link
                 to={item.to}
                 onClick={() => setMenuOpen(false)}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                className={`cursor-pointer rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                   location.pathname === item.to
                     ? "bg-primary-soft text-primary-ink"
                     : "text-ink-muted hover:bg-surface-2"
@@ -65,7 +65,7 @@ export default function AppLayout() {
         <header className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3 lg:px-6">
           <button
             aria-label="Buka menu"
-            className="text-ink lg:hidden"
+            className="cursor-pointer text-ink lg:hidden"
             onClick={() => setMenuOpen(true)}
           >
             ☰
@@ -74,7 +74,7 @@ export default function AppLayout() {
             <span className="text-ink-muted">
               {user?.name} &middot; {user?.role}
             </span>
-            <button onClick={logout} className="font-semibold text-primary-ink hover:underline">
+            <button onClick={logout} className="cursor-pointer font-semibold text-primary-ink hover:underline">
               Logout
             </button>
           </div>
