@@ -27,7 +27,7 @@ export default function DataTable({ columns, rows, rowKey, emptyMessage = "Tidak
             </tr>
           )}
           {rows.map((row) => (
-            <tr key={rowKey(row)} className="border-b border-border last:border-0">
+            <tr key={rowKey(row)} className="border-b border-border transition-colors last:border-0 hover:bg-surface-2">
               {columns.map((col) => (
                 <td key={col.key} className="px-3 py-2 text-ink">
                   {col.render ? col.render(row) : row[col.key]}

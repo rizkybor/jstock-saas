@@ -76,6 +76,7 @@ export default function ProductsPage() {
               label="Unit Cost"
               name="unit_cost"
               type="number"
+              min="0"
               value={form.unit_cost}
               onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
               required
@@ -84,6 +85,7 @@ export default function ProductsPage() {
               label="Qty"
               name="quantity"
               type="number"
+              min="1"
               value={form.quantity}
               onChange={(e) => setForm({ ...form, quantity: e.target.value })}
               required
@@ -92,6 +94,7 @@ export default function ProductsPage() {
               label="Biaya Tambahan"
               name="additional_cost"
               type="number"
+              min="0"
               hint="Opsional, mis. ongkos kirim"
               value={form.additional_cost}
               onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
@@ -105,9 +108,11 @@ export default function ProductsPage() {
         </Card>
       </Can>
 
-      <div className="mb-4">
-        <Alert>{error}</Alert>
-      </div>
+      {error && (
+        <div className="mb-4">
+          <Alert>{error}</Alert>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-sm text-ink-muted">Memuat...</p>

@@ -175,9 +175,11 @@ export default function TransactionsPage() {
         </Card>
       </Can>
 
-      <div className="mb-4">
-        <Alert>{error}</Alert>
-      </div>
+      {error && (
+        <div className="mb-4">
+          <Alert>{error}</Alert>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-sm text-ink-muted">Memuat...</p>
