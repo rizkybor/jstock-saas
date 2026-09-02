@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
+import { Alert, Badge, Button, Card, DataTable, Input, PageHeader, Select } from "../../components/ui";
+import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 
 const EMPTY_FORM = { product_id: "", qty: "", sender_name: "", recipient_name: "", recipient_company: "" };
 
+const formatCurrency = (value) => `Rp ${value.toLocaleString("id-ID")}`;
+
 export default function TransactionsPage() {
+  const { can } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,14 +56,14 @@ export default function TransactionsPage() {
       setForm(EMPTY_FORM);
       await Promise.all([loadTransactions(), loadProducts()]);
     } catch (err) {
-      const message = err.response?.data?.message ?? "Gagal membuat transaksi.";
-      setError(message);
+      setError(err.response?.data?.message ?? "Gagal membuat transaksi.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleApprove = async (id) => {
+    setError(null);
     try {
       await apiClient.patch(`/transactions/${id}/approve`);
       await Promise.all([loadTransactions(), loadProducts()]);
@@ -70,6 +75,7 @@ export default function TransactionsPage() {
   const handleReject = async (id) => {
     const note = prompt("Alasan penolakan:");
     if (!note) return;
+    setError(null);
     try {
       await apiClient.patch(`/transactions/${id}/reject`, { rejection_note: note });
       await loadTransactions();
@@ -78,105 +84,110 @@ export default function TransactionsPage() {
     }
   };
 
+  const columns = [
+    { key: "trx_number", header: "No. Trx", render: (row) => <span className="font-mono text-xs">{row.trx_number}</span> },
+    { key: "sender", header: "Pengirim", render: (row) => row.sender?.name ?? "-" },
+    { key: "recipient", header: "Penerima", render: (row) => row.recipient?.name ?? "-" },
+    { key: "total", header: "Total", render: (row) => formatCurrency(row.total) },
+    { key: "status", header: "Status", render: (row) => <Badge status={row.status}>{row.status}</Badge> },
+  ];
+
+  if (can("transactions.approve")) {
+    columns.push({
+      key: "actions",
+      header: "Aksi",
+      render: (row) =>
+        row.status === "pending" && (
+          <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={() => handleApprove(row.id)}>
+              Approve
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => handleReject(row.id)}>
+              Reject
+            </Button>
+          </div>
+        ),
+    });
+  }
+
   return (
     <div>
-      <h1>Transaksi Barang Keluar</h1>
+      <PageHeader title="Transaksi Barang Keluar" description="Catat pengeluaran barang dan pantau status approval." />
 
       <Can permission="transactions.create">
-        <form onSubmit={handleSubmit} style={{ display: "flex", gap: ".5rem", marginBottom: "1rem", flexWrap: "wrap", alignItems: "center" }}>
-          <select
-            value={form.product_id}
-            onChange={(e) => setForm({ ...form, product_id: e.target.value })}
-            required
-          >
-            <option value="">Pilih Barang / LOT</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.lot_batch}) - stok {p.stock_qty}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            placeholder="Qty"
-            min="1"
-            value={form.qty}
-            onChange={(e) => setForm({ ...form, qty: e.target.value })}
-            required
-          />
-          <input
-            placeholder="Nama Pengirim"
-            value={form.sender_name}
-            onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
-            required
-          />
-          <input
-            placeholder="Nama Penerima"
-            value={form.recipient_name}
-            onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-            required
-          />
-          <input
-            placeholder="Perusahaan Penerima"
-            value={form.recipient_company}
-            onChange={(e) => setForm({ ...form, recipient_company: e.target.value })}
-          />
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Menyimpan..." : "Submit untuk Approval"}
-          </button>
-        </form>
-        {selectedProduct && (
-          <p style={{ fontSize: ".85rem", color: "#555" }}>
-            Highlight: {selectedProduct.name} &middot; {selectedProduct.lot_batch} &middot; Stok tersedia {selectedProduct.stock_qty}
-          </p>
-        )}
+        <Card title="Transaksi Baru" className="mb-6">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Select
+              label="Barang / LOT"
+              name="product_id"
+              value={form.product_id}
+              onChange={(e) => setForm({ ...form, product_id: e.target.value })}
+              required
+            >
+              <option value="">Pilih barang</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.lot_batch}) &middot; stok {p.stock_qty}
+                </option>
+              ))}
+            </Select>
+            <Input
+              label="Qty"
+              name="qty"
+              type="number"
+              min="1"
+              value={form.qty}
+              onChange={(e) => setForm({ ...form, qty: e.target.value })}
+              required
+            />
+            <Input
+              label="Nama Pengirim"
+              name="sender_name"
+              value={form.sender_name}
+              onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
+              required
+            />
+            <Input
+              label="Nama Penerima"
+              name="recipient_name"
+              value={form.recipient_name}
+              onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
+              required
+            />
+            <Input
+              label="Perusahaan Penerima"
+              name="recipient_company"
+              hint="Opsional"
+              value={form.recipient_company}
+              onChange={(e) => setForm({ ...form, recipient_company: e.target.value })}
+            />
+            <div className="flex items-end">
+              <Button type="submit" disabled={submitting} className="w-full">
+                {submitting ? "Menyimpan..." : "Submit untuk Approval"}
+              </Button>
+            </div>
+          </form>
+          {selectedProduct && (
+            <p className="mt-3 rounded-md border border-dashed border-warning/40 bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
+              Highlight: {selectedProduct.name} &middot; {selectedProduct.lot_batch} &middot; Stok tersedia {selectedProduct.stock_qty}
+            </p>
+          )}
+        </Card>
       </Can>
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      <div className="mb-4">
+        <Alert>{error}</Alert>
+      </div>
 
       {loading ? (
-        <p>Memuat...</p>
+        <p className="text-sm text-ink-muted">Memuat...</p>
       ) : (
-        <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr>
-              <th>No. Trx</th>
-              <th>Sender</th>
-              <th>Recipient</th>
-              <th>Total</th>
-              <th>Status</th>
-              <Can permission="transactions.approve">
-                <th>Aksi</th>
-              </Can>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.length === 0 && (
-              <tr>
-                <td colSpan={6}>Belum ada transaksi.</td>
-              </tr>
-            )}
-            {transactions.map((trx) => (
-              <tr key={trx.id}>
-                <td>{trx.trx_number}</td>
-                <td>{trx.sender?.name ?? "-"}</td>
-                <td>{trx.recipient?.name ?? "-"}</td>
-                <td>{trx.total.toLocaleString("id-ID")}</td>
-                <td>{trx.status}</td>
-                <Can permission="transactions.approve">
-                  <td>
-                    {trx.status === "pending" && (
-                      <>
-                        <button onClick={() => handleApprove(trx.id)}>Approve</button>{" "}
-                        <button onClick={() => handleReject(trx.id)}>Reject</button>
-                      </>
-                    )}
-                  </td>
-                </Can>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={columns}
+          rows={transactions}
+          rowKey={(row) => row.id}
+          emptyMessage="Belum ada transaksi."
+        />
       )}
     </div>
   );

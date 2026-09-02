@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
+import { Alert, Button, Card, DataTable, Input, PageHeader } from "../../components/ui";
 import Can from "../../routes/Can";
 
 const EMPTY_FORM = { name: "", unit_cost: "", quantity: "", additional_cost: "" };
+
+const formatCurrency = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -37,86 +40,84 @@ export default function ProductsPage() {
       setForm(EMPTY_FORM);
       await loadProducts();
     } catch (err) {
-      const message = err.response?.data?.message ?? "Gagal menambahkan barang.";
-      setError(message);
+      setError(err.response?.data?.message ?? "Gagal menambahkan barang.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const columns = [
+    { key: "name", header: "Nama Barang" },
+    { key: "lot_batch", header: "LOT/Batch", render: (row) => <span className="font-mono text-xs">{row.lot_batch}</span> },
+    { key: "unit_cost", header: "Unit Cost", render: (row) => formatCurrency(row.unit_cost) },
+    { key: "grand_total_cost", header: "Grand Total Cost", render: (row) => formatCurrency(row.grand_total_cost) },
+    { key: "cogs", header: "COGS/unit", render: (row) => formatCurrency(row.cogs) },
+    { key: "stock_qty", header: "Stok" },
+  ];
+
   return (
     <div>
-      <h1>Data Barang</h1>
+      <PageHeader title="Data Barang" description="Master inventory berbasis LOT/Batch dengan kalkulasi COGS otomatis." />
 
       <Can permission="products.create">
-        <form onSubmit={handleSubmit} style={{ display: "flex", gap: ".5rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
-          <input
-            placeholder="Nama Barang (mis. 8AL 25PPM H2S/100PPM CO)"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            style={{ minWidth: 260 }}
-            required
-          />
-          <input
-            type="number"
-            placeholder="Unit Cost"
-            value={form.unit_cost}
-            onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
-            required
-          />
-          <input
-            type="number"
-            placeholder="Qty"
-            value={form.quantity}
-            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            required
-          />
-          <input
-            type="number"
-            placeholder="Biaya Tambahan (opsional)"
-            value={form.additional_cost}
-            onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
-          />
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Menyimpan..." : "Tambah Barang"}
-          </button>
-        </form>
+        <Card title="Tambah Barang Baru" className="mb-6">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="sm:col-span-2 lg:col-span-4">
+              <Input
+                label="Nama Barang"
+                name="name"
+                placeholder="mis. 8AL 25PPM H2S/100PPM CO"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
+            </div>
+            <Input
+              label="Unit Cost"
+              name="unit_cost"
+              type="number"
+              value={form.unit_cost}
+              onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
+              required
+            />
+            <Input
+              label="Qty"
+              name="quantity"
+              type="number"
+              value={form.quantity}
+              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              required
+            />
+            <Input
+              label="Biaya Tambahan"
+              name="additional_cost"
+              type="number"
+              hint="Opsional, mis. ongkos kirim"
+              value={form.additional_cost}
+              onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
+            />
+            <div className="flex items-end">
+              <Button type="submit" disabled={submitting} className="w-full">
+                {submitting ? "Menyimpan..." : "Tambah Barang"}
+              </Button>
+            </div>
+          </form>
+        </Card>
       </Can>
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      <div className="mb-4">
+        <Alert>{error}</Alert>
+      </div>
 
       {loading ? (
-        <p>Memuat...</p>
+        <p className="text-sm text-ink-muted">Memuat...</p>
       ) : (
-        <table border="1" cellPadding="6" style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr>
-              <th>Nama Barang</th>
-              <th>LOT/Batch</th>
-              <th>Unit Cost</th>
-              <th>Grand Total Cost</th>
-              <th>COGS/unit</th>
-              <th>Stok</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.length === 0 && (
-              <tr>
-                <td colSpan={6}>Belum ada data barang.</td>
-              </tr>
-            )}
-            {products.map((product) => (
-              <tr key={product.id}>
-                <td>{product.name}</td>
-                <td>{product.lot_batch}</td>
-                <td>{product.unit_cost.toLocaleString("id-ID")}</td>
-                <td>{product.grand_total_cost.toLocaleString("id-ID")}</td>
-                <td>{product.cogs.toLocaleString("id-ID")}</td>
-                <td>{product.stock_qty}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={columns}
+          rows={products}
+          rowKey={(row) => row.id}
+          emptyMessage="Belum ada data barang."
+        />
       )}
     </div>
   );
