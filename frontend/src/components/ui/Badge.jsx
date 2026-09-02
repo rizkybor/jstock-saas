@@ -3,6 +3,7 @@ const STATUS_STYLES = {
   approved: "bg-success-soft text-success",
   active: "bg-success-soft text-success",
   rejected: "bg-danger-soft text-danger",
+  suspended: "bg-danger-soft text-danger",
   cancelled: "bg-surface-2 text-ink-muted",
   inactive: "bg-surface-2 text-ink-muted",
   trial: "bg-info-soft text-info",

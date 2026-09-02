@@ -20,7 +20,11 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const can = (permission) => user?.permissions?.includes(permission) ?? false;
+  const can = (permission) => {
+    const permissions = user?.permissions ?? [];
+    // Super Admin's permission set is the wildcard ["*"] — treat it as "everything".
+    return permissions.includes("*") || permissions.includes(permission);
+  };
 
   return (
     <AuthContext.Provider value={{ user, login, logout, can }}>

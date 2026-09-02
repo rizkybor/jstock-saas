@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Button, Input } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
+import { homeRouteFor } from "../../routes/homeRoute";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -19,7 +20,7 @@ export default function LoginPage() {
     try {
       const { data } = await apiClient.post("/auth/login", { email, password });
       login(data.data);
-      navigate("/dashboard");
+      navigate(homeRouteFor(data.data.user));
     } catch {
       setError("Email atau password salah.");
     } finally {

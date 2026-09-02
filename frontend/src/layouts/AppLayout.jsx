@@ -3,17 +3,23 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Can from "../routes/Can";
 
-const NAV_ITEMS = [
+const TENANT_NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", permission: "dashboard.view" },
   { to: "/clients", label: "Data Klien", permission: "clients.view" },
   { to: "/products", label: "Data Barang", permission: "products.view" },
   { to: "/transactions", label: "Transaksi", permission: "transactions.view" },
 ];
 
+// Super Admin operates at platform level only — it never sees tenant
+// business data (clients/products/transactions belong to a tenant, and
+// admin's null tenant_id would otherwise mean "every tenant at once").
+const PLATFORM_NAV_ITEMS = [{ to: "/admin/tenants", label: "Kelola Tenant", permission: "admin.tenants.view" }];
+
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const navItems = user?.role === "super_admin" ? PLATFORM_NAV_ITEMS : TENANT_NAV_ITEMS;
 
   return (
     <div className="min-h-screen bg-bg">
@@ -43,7 +49,7 @@ export default function AppLayout() {
           </button>
         </div>
         <nav className="flex flex-col gap-1 px-3">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <Can permission={item.permission} key={item.to}>
               <Link
                 to={item.to}
