@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, Card, DataTable, Input, PageHeader } from "../../components/ui";
+import { Alert, Badge, Button, Card, DataTable, Input, PageHeader, Pagination } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 
@@ -13,13 +13,15 @@ export default function ClientsPage() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
 
-  const loadClients = async () => {
+  const loadClients = async (page = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get("/clients");
+      const { data } = await apiClient.get("/clients", { params: { page } });
       setClients(data.data);
+      setMeta(data.meta);
     } catch {
       setError("Gagal memuat data klien.");
     } finally {
@@ -28,7 +30,7 @@ export default function ClientsPage() {
   };
 
   useEffect(() => {
-    loadClients();
+    loadClients(1);
   }, []);
 
   const handleSubmit = async (event) => {
@@ -38,7 +40,7 @@ export default function ClientsPage() {
     try {
       await apiClient.post("/clients", form);
       setForm(EMPTY_FORM);
-      await loadClients();
+      await loadClients(1);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal menambahkan klien.");
     } finally {
@@ -49,7 +51,7 @@ export default function ClientsPage() {
   const handleDeactivate = async (id) => {
     if (!confirm("Nonaktifkan klien ini?")) return;
     await apiClient.delete(`/clients/${id}`);
-    await loadClients();
+    await loadClients(meta.current_page);
   };
 
   const columns = [
@@ -128,12 +130,21 @@ export default function ClientsPage() {
       {loading ? (
         <p className="text-sm text-ink-muted">Memuat...</p>
       ) : (
-        <DataTable
-          columns={columns}
-          rows={clients}
-          rowKey={(row) => row.id}
-          emptyMessage="Belum ada data klien."
-        />
+        <>
+          <DataTable
+            columns={columns}
+            rows={clients}
+            rowKey={(row) => row.id}
+            emptyMessage="Belum ada data klien."
+            startIndex={(meta.current_page - 1) * 10}
+          />
+          <Pagination
+            currentPage={meta.current_page}
+            lastPage={meta.last_page}
+            total={meta.total}
+            onPageChange={loadClients}
+          />
+        </>
       )}
     </div>
   );

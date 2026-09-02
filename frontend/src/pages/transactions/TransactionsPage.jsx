@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, Card, DataTable, Input, PageHeader, Select } from "../../components/ui";
+import { Alert, Badge, Button, Card, DataTable, Input, PageHeader, Pagination, Select } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 
@@ -16,13 +16,15 @@ export default function TransactionsPage() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
 
-  const loadTransactions = async () => {
+  const loadTransactions = async (page = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get("/transactions");
+      const { data } = await apiClient.get("/transactions", { params: { page } });
       setTransactions(data.data);
+      setMeta(data.meta);
     } catch {
       setError("Gagal memuat data transaksi.");
     } finally {
@@ -31,12 +33,13 @@ export default function TransactionsPage() {
   };
 
   const loadProducts = async () => {
-    const { data } = await apiClient.get("/products");
+    // Not paginated on purpose: the dropdown needs every product in stock, not just page 1.
+    const { data } = await apiClient.get("/products", { params: { limit: 1000 } });
     setProducts(data.data);
   };
 
   useEffect(() => {
-    loadTransactions();
+    loadTransactions(1);
     loadProducts();
   }, []);
 
@@ -54,7 +57,7 @@ export default function TransactionsPage() {
         items: [{ product_id: Number(form.product_id), qty: Number(form.qty) }],
       });
       setForm(EMPTY_FORM);
-      await Promise.all([loadTransactions(), loadProducts()]);
+      await Promise.all([loadTransactions(1), loadProducts()]);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal membuat transaksi.");
     } finally {
@@ -66,7 +69,7 @@ export default function TransactionsPage() {
     setError(null);
     try {
       await apiClient.patch(`/transactions/${id}/approve`);
-      await Promise.all([loadTransactions(), loadProducts()]);
+      await Promise.all([loadTransactions(meta.current_page), loadProducts()]);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal approve transaksi.");
     }
@@ -78,7 +81,7 @@ export default function TransactionsPage() {
     setError(null);
     try {
       await apiClient.patch(`/transactions/${id}/reject`, { rejection_note: note });
-      await loadTransactions();
+      await loadTransactions(meta.current_page);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal reject transaksi.");
     }
@@ -184,12 +187,21 @@ export default function TransactionsPage() {
       {loading ? (
         <p className="text-sm text-ink-muted">Memuat...</p>
       ) : (
-        <DataTable
-          columns={columns}
-          rows={transactions}
-          rowKey={(row) => row.id}
-          emptyMessage="Belum ada transaksi."
-        />
+        <>
+          <DataTable
+            columns={columns}
+            rows={transactions}
+            rowKey={(row) => row.id}
+            emptyMessage="Belum ada transaksi."
+            startIndex={(meta.current_page - 1) * 10}
+          />
+          <Pagination
+            currentPage={meta.current_page}
+            lastPage={meta.last_page}
+            total={meta.total}
+            onPageChange={loadTransactions}
+          />
+        </>
       )}
     </div>
   );

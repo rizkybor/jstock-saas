@@ -2,10 +2,18 @@
  * Generic data table: columns = [{ key, header, render?(row) }].
  * Scrolls horizontally in its own container so the page body never does.
  * A "No." index column is prepended automatically (disable with showIndex={false}).
+ * Pass startIndex (0-based) when paginating so numbering continues across pages.
  */
-export default function DataTable({ columns, rows, rowKey, emptyMessage = "Tidak ada data.", showIndex = true }) {
+export default function DataTable({
+  columns,
+  rows,
+  rowKey,
+  emptyMessage = "Tidak ada data.",
+  showIndex = true,
+  startIndex = 0,
+}) {
   const allColumns = showIndex
-    ? [{ key: "__index", header: "No.", render: (_row, index) => index + 1 }, ...columns]
+    ? [{ key: "__index", header: "No.", render: (_row, index) => startIndex + index + 1 }, ...columns]
     : columns;
 
   return (

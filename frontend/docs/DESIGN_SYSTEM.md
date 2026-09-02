@@ -65,6 +65,7 @@ import { Alert, Badge, Button, Card, DataTable, EmptyState, Input, PageHeader, S
 | `PageHeader` | Judul halaman + deskripsi + aksi utama | `title`, `description`, `action` |
 | `EmptyState` | Placeholder saat data/fitur belum ada | `title`, `description`, `action` |
 | `Alert` | Pesan error/sukses/info sebaris | `tone`: `danger` \| `success` \| `info`; render `null` kalau `children` kosong — aman dipakai langsung dengan state error (`<Alert>{error}</Alert>`) |
+| `Pagination` | Navigasi halaman di bawah `DataTable` | `currentPage`, `lastPage`, `total`, `onPageChange(page)`; render `null` otomatis kalau cuma 1 halaman |
 | `StatTile` | Kartu angka ringkasan (dashboard) | `label`, `value`, `delta` (opsional) |
 
 ### Pola penggunaan `DataTable`
@@ -85,6 +86,29 @@ if (can("clients.delete")) {
 Kolom aksi yang butuh permission ditambahkan **secara kondisional lewat `can()` dari `useAuth()`**, bukan disembunyikan dengan CSS — supaya kolom "Aksi" tidak muncul kosong untuk role yang tidak berhak (lihat `ClientsPage.jsx` / `TransactionsPage.jsx`).
 
 Setiap tabel otomatis dapat kolom **No.** di paling kiri berisi nomor urut baris (1, 2, 3, ...) — matikan lewat `showIndex={false}` kalau memang tidak relevan (jarang).
+
+### Pola `Pagination`
+
+Semua endpoint list backend (`/clients`, `/products`, `/transactions`) sudah mengembalikan `meta: { current_page, last_page, total }` dengan 10 data per halaman. Pola standarnya di tiap halaman:
+
+```jsx
+const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+
+const loadClients = async (page = 1) => {
+  const { data } = await apiClient.get("/clients", { params: { page } });
+  setClients(data.data);
+  setMeta(data.meta);
+};
+
+// setelah create/delete, reload ke halaman yang relevan:
+await loadClients(1);              // create -> data baru selalu di halaman 1 (urut terbaru)
+await loadClients(meta.current_page); // update/delete -> tetap di halaman yang sama
+
+<DataTable ... startIndex={(meta.current_page - 1) * 10} />
+<Pagination currentPage={meta.current_page} lastPage={meta.last_page} total={meta.total} onPageChange={loadClients} />
+```
+
+`startIndex` pada `DataTable` wajib diisi supaya nomor urut ("No.") lanjut (11, 12, ...) di halaman 2+, bukan mulai dari 1 lagi. Untuk dropdown pilihan (bukan tabel) yang butuh **semua** data sekaligus — seperti pemilihan barang di form Transaksi — jangan pakai default pagination, kirim `{ params: { limit: 1000 } }`.
 
 **Konvensi cursor**: semua elemen yang bisa diklik (`Button`, `Select`, nav sidebar, tombol hamburger/logout) memakai `cursor-pointer` secara eksplisit — jangan andalkan default browser, karena beberapa reset CSS bisa mengubahnya jadi `cursor: default` pada elemen non-`<a>`.
 

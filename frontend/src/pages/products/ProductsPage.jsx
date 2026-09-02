@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Button, Card, DataTable, Input, PageHeader } from "../../components/ui";
+import { Alert, Button, Card, DataTable, Input, PageHeader, Pagination } from "../../components/ui";
 import Can from "../../routes/Can";
 
 const EMPTY_FORM = { name: "", unit_cost: "", quantity: "", additional_cost: "" };
@@ -13,13 +13,15 @@ export default function ProductsPage() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
 
-  const loadProducts = async () => {
+  const loadProducts = async (page = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get("/products");
+      const { data } = await apiClient.get("/products", { params: { page } });
       setProducts(data.data);
+      setMeta(data.meta);
     } catch {
       setError("Gagal memuat data barang.");
     } finally {
@@ -28,7 +30,7 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
-    loadProducts();
+    loadProducts(1);
   }, []);
 
   const handleSubmit = async (event) => {
@@ -38,7 +40,7 @@ export default function ProductsPage() {
     try {
       await apiClient.post("/products", form);
       setForm(EMPTY_FORM);
-      await loadProducts();
+      await loadProducts(1);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal menambahkan barang.");
     } finally {
@@ -117,12 +119,21 @@ export default function ProductsPage() {
       {loading ? (
         <p className="text-sm text-ink-muted">Memuat...</p>
       ) : (
-        <DataTable
-          columns={columns}
-          rows={products}
-          rowKey={(row) => row.id}
-          emptyMessage="Belum ada data barang."
-        />
+        <>
+          <DataTable
+            columns={columns}
+            rows={products}
+            rowKey={(row) => row.id}
+            emptyMessage="Belum ada data barang."
+            startIndex={(meta.current_page - 1) * 10}
+          />
+          <Pagination
+            currentPage={meta.current_page}
+            lastPage={meta.last_page}
+            total={meta.total}
+            onPageChange={loadProducts}
+          />
+        </>
       )}
     </div>
   );
