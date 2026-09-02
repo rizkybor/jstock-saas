@@ -35,6 +35,18 @@
   --danger-soft: #fbe9e7;
   --info: #1679ab;
   --info-soft: #e1eef4;
+
+  /*
+   * Fixed (non-theme-swapping) surface: tables and form fields always
+   * stay white with dark text, in both light and dark mode, for data
+   * legibility — only the chrome (sidebar/topbar/page bg) goes dark.
+   * Declared once here and never overridden below on purpose.
+   */
+  --surface-fixed: #ffffff;
+  --surface-fixed-2: #f3f5f4;
+  --surface-fixed-border: #dde3e0;
+  --surface-fixed-ink: #16211d;
+  --surface-fixed-ink-muted: #5b6d66;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -97,6 +109,12 @@
   --color-danger-soft: var(--danger-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
+
+  --color-surface-fixed: var(--surface-fixed);
+  --color-surface-fixed-2: var(--surface-fixed-2);
+  --color-surface-fixed-border: var(--surface-fixed-border);
+  --color-surface-fixed-ink: var(--surface-fixed-ink);
+  --color-surface-fixed-ink-muted: var(--surface-fixed-ink-muted);
 
   --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
