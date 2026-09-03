@@ -6,11 +6,12 @@ use App\Models\Client;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\HasInventoryModule;
 use Tests\TestCase;
 
 class ClientTenantIsolationTest extends TestCase
 {
-    use RefreshDatabase;
+    use HasInventoryModule, RefreshDatabase;
 
     private function makeUser(Tenant $tenant, string $role): User
     {
@@ -28,6 +29,8 @@ class ClientTenantIsolationTest extends TestCase
     {
         $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
         $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b', 'status' => 'trial']);
+        $this->enableInventoryModule($tenantA);
+        $this->enableInventoryModule($tenantB);
 
         $ownerA = $this->makeUser($tenantA, 'owner');
         $ownerB = $this->makeUser($tenantB, 'owner');
@@ -57,6 +60,8 @@ class ClientTenantIsolationTest extends TestCase
     {
         $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
         $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b', 'status' => 'trial']);
+        $this->enableInventoryModule($tenantA);
+        $this->enableInventoryModule($tenantB);
         $ownerB = $this->makeUser($tenantB, 'owner');
 
         $client = Client::create([
@@ -80,6 +85,7 @@ class ClientTenantIsolationTest extends TestCase
     public function test_viewer_cannot_create_or_delete_clients(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
         $viewer = $this->makeUser($tenant, 'viewer');
 
         $client = Client::create([
@@ -100,5 +106,15 @@ class ClientTenantIsolationTest extends TestCase
             ->getJson('/api/clients')
             ->assertOk()
             ->assertJsonCount(1, 'data');
+    }
+
+    public function test_tenant_without_the_module_cannot_access_clients(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant C', 'slug' => 'tenant-c', 'status' => 'trial']);
+        $owner = $this->makeUser($tenant, 'owner');
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/clients')
+            ->assertStatus(403);
     }
 }

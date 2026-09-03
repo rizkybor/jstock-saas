@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\Module;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
@@ -49,6 +50,14 @@ class AuthController extends Controller
                 'started_at' => now(),
                 'ends_at' => $tenant->trial_ends_at,
             ]);
+
+            // New tenants start with the flagship module enabled. Super Admin
+            // can revoke it or grant additional modules afterwards from the
+            // platform admin panel.
+            $defaultModule = Module::where('key', 'inventory-gas-kalibrasi')->first();
+            if ($defaultModule) {
+                $tenant->modules()->attach($defaultModule->id);
+            }
 
             return User::create([
                 'tenant_id' => $tenant->id,

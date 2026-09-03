@@ -20,6 +20,7 @@ class TenantResource extends JsonResource
             'trial_ends_at' => $this->trial_ends_at,
             'users_count' => $this->whenCounted('users'),
             'plan' => $this->whenLoaded('activeSubscription', fn () => $this->activeSubscription?->plan?->name),
+            'modules' => ModuleResource::collection($this->whenLoaded('modules')),
             'created_at' => $this->created_at,
         ];
     }

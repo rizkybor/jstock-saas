@@ -6,11 +6,12 @@ use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\HasInventoryModule;
 use Tests\TestCase;
 
 class TransactionFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use HasInventoryModule, RefreshDatabase;
 
     private function makeUser(Tenant $tenant, string $role): User
     {
@@ -40,6 +41,7 @@ class TransactionFlowTest extends TestCase
     public function test_operator_can_submit_transaction_and_owner_can_approve_it(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
         $owner = $this->makeUser($tenant, 'owner');
         $operator = $this->makeUser($tenant, 'operator');
         $product = $this->makeProduct($tenant, 40);
@@ -79,6 +81,7 @@ class TransactionFlowTest extends TestCase
     public function test_transaction_is_rejected_when_stock_is_insufficient(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
         $owner = $this->makeUser($tenant, 'owner');
         $product = $this->makeProduct($tenant, 3);
 
@@ -94,6 +97,7 @@ class TransactionFlowTest extends TestCase
     public function test_rejecting_a_transaction_does_not_touch_stock(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
         $owner = $this->makeUser($tenant, 'owner');
         $product = $this->makeProduct($tenant, 10);
 
@@ -115,6 +119,8 @@ class TransactionFlowTest extends TestCase
     {
         $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
         $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b', 'status' => 'trial']);
+        $this->enableInventoryModule($tenantA);
+        $this->enableInventoryModule($tenantB);
         $ownerA = $this->makeUser($tenantA, 'owner');
         $ownerB = $this->makeUser($tenantB, 'owner');
         $product = $this->makeProduct($tenantA, 10);

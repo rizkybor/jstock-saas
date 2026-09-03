@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ModuleResource;
 use App\Http\Resources\TenantResource;
+use App\Models\Module;
 use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Models\User;
@@ -15,7 +17,7 @@ class TenantController extends Controller
     {
         $tenants = Tenant::query()
             ->withCount('users')
-            ->with('activeSubscription.plan')
+            ->with(['activeSubscription.plan', 'modules'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->string('q')->isNotEmpty(), fn ($query) => $query->where('name', 'like', '%'.$request->string('q').'%'))
             ->latest()
@@ -35,7 +37,7 @@ class TenantController extends Controller
 
     public function show(Tenant $tenant)
     {
-        $tenant->loadCount('users')->load('activeSubscription.plan');
+        $tenant->loadCount('users')->load(['activeSubscription.plan', 'modules']);
 
         return response()->json([
             'success' => true,
@@ -63,6 +65,48 @@ class TenantController extends Controller
             'success' => true,
             'data' => new TenantResource($tenant),
             'message' => 'Tenant berhasil diaktifkan kembali.',
+        ]);
+    }
+
+    /**
+     * Full module catalog with an `enabled` flag for this specific tenant —
+     * what the Super Admin's module-assignment panel renders as checkboxes.
+     */
+    public function modules(Tenant $tenant)
+    {
+        $enabledIds = $tenant->modules()->pluck('modules.id');
+
+        $modules = Module::orderBy('name')->get()->map(fn (Module $module) => [
+            ...(new ModuleResource($module))->resolve(),
+            'enabled' => $enabledIds->contains($module->id),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $modules,
+            'message' => null,
+        ]);
+    }
+
+    public function attachModule(Tenant $tenant, Module $module)
+    {
+        $tenant->modules()->syncWithoutDetaching([$module->id]);
+
+        return response()->json([
+            'success' => true,
+            'data' => null,
+            'message' => "Modul \"{$module->name}\" diaktifkan untuk {$tenant->name}.",
+        ]);
+    }
+
+    public function detachModule(Tenant $tenant, Module $module)
+    {
+        $tenant->modules()->detach($module->id);
+
+        return response()->json([
+            'success' => true,
+            'data' => null,
+            'message' => "Modul \"{$module->name}\" dinonaktifkan untuk {$tenant->name}.",
         ]);
     }
 
