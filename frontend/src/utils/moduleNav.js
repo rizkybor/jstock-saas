@@ -26,3 +26,10 @@ export const MODULE_NAV_ITEMS = {
     { to: `/${tenantId}/warehouse/stock-opname`, label: "Stock Opname", permission: "warehouse-stock.view", menu: "stock-opname" },
   ],
 };
+
+// Core/platform-level nav items — not tied to any module, so they show up
+// for a tenant regardless of which module(s) it has (gated only by
+// permission, not by a module's menu-enabled setting).
+export const CORE_NAV_ITEMS = (tenantId) => [
+  { to: `/${tenantId}/settings/company`, label: "Profil Perusahaan", permission: "tenant.view" },
+];

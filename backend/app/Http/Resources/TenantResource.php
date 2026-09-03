@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class TenantResource extends JsonResource
 {
@@ -21,6 +22,7 @@ class TenantResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'address' => $this->address,
+            'logo_url' => $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null,
             'province_id' => $this->province_id,
             'province_name' => $this->province_name,
             'regency_id' => $this->regency_id,

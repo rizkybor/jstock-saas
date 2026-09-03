@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\PublicScanController;
 use App\Http\Controllers\Api\RecipientController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SenderController;
+use App\Http\Controllers\Api\TenantProfileController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\Warehouse\CategoryController as WarehouseCategoryController;
@@ -48,6 +49,16 @@ Route::middleware('throttle:30,1')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+
+    // Self-service company profile — core/platform-level, not tied to any
+    // module:<key>, so it works the same for an Inventory Gas Kalibrasi or
+    // Warehouse General tenant. See TenantProfileController's docblock.
+    Route::prefix('tenant')->group(function () {
+        Route::get('/', [TenantProfileController::class, 'show'])->middleware('permission:tenant.view');
+        Route::put('/', [TenantProfileController::class, 'update'])->middleware('permission:tenant.update');
+        Route::post('/logo', [TenantProfileController::class, 'uploadLogo'])->middleware('permission:tenant.update');
+        Route::delete('/logo', [TenantProfileController::class, 'destroyLogo'])->middleware('permission:tenant.update');
+    });
 
     // Everything below belongs to the "Inventory Gas Kalibrasi" module —
     // future modules (different business processes) get their own prefix

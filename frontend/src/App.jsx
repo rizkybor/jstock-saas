@@ -14,6 +14,7 @@ import WarehouseItemsPage from "./pages/warehouse/WarehouseItemsPage";
 import WarehouseStockPage from "./pages/warehouse/WarehouseStockPage";
 import WarehousePurchaseOrdersPage from "./pages/warehouse/WarehousePurchaseOrdersPage";
 import WarehouseStockOpnamePage from "./pages/warehouse/WarehouseStockOpnamePage";
+import CompanyProfilePage from "./pages/settings/CompanyProfilePage";
 import AdminTenantsPage from "./pages/admin/AdminTenantsPage";
 import TenantConfigurationPage from "./pages/admin/TenantConfigurationPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -56,6 +57,8 @@ function App() {
             <Route path="/:tenantId/warehouse/stock" element={<WarehouseStockPage />} />
             <Route path="/:tenantId/warehouse/purchase-orders" element={<WarehousePurchaseOrdersPage />} />
             <Route path="/:tenantId/warehouse/stock-opname" element={<WarehouseStockOpnamePage />} />
+
+            <Route path="/:tenantId/settings/company" element={<CompanyProfilePage />} />
           </Route>
 
           <Route element={<RequirePermission permission="admin.tenants.view" />}>

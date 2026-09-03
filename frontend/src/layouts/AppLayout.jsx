@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Can from "../routes/Can";
-import { MODULE_NAV_ITEMS } from "../utils/moduleNav";
+import { CORE_NAV_ITEMS, MODULE_NAV_ITEMS } from "../utils/moduleNav";
 
 // Super Admin operates at platform level only — it never sees tenant
 // business data (clients/products/transactions belong to a tenant, and
@@ -13,7 +13,7 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const navItems =
+  const moduleNavItems =
     user?.role === "super_admin"
       ? PLATFORM_NAV_ITEMS
       : Object.entries(MODULE_NAV_ITEMS).flatMap(([moduleKey, buildItems]) =>
@@ -21,6 +21,8 @@ export default function AppLayout() {
             ? buildItems(user.tenant_token).filter((item) => user?.menus?.[moduleKey]?.[item.menu] !== false)
             : [],
         );
+  const coreNavItems = user?.role === "super_admin" || !user?.tenant_token ? [] : CORE_NAV_ITEMS(user.tenant_token);
+  const navItems = [...moduleNavItems, ...coreNavItems];
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (
@@ -56,7 +58,7 @@ export default function AppLayout() {
           {user?.role !== "super_admin" && navItems.length === 0 && (
             <p className="px-3 py-2 text-sm text-ink-muted">Belum ada modul aktif untuk perusahaan Anda.</p>
           )}
-          {navItems.map((item) => (
+          {moduleNavItems.map((item) => (
             <Can permission={item.permission} key={item.to}>
               <Link
                 to={item.to}
@@ -71,6 +73,26 @@ export default function AppLayout() {
               </Link>
             </Can>
           ))}
+
+          {coreNavItems.length > 0 && (
+            <div className="mt-2 flex flex-col gap-0.5 border-t border-border pt-2">
+              {coreNavItems.map((item) => (
+                <Can permission={item.permission} key={item.to}>
+                  <Link
+                    to={item.to}
+                    onClick={() => setMenuOpen(false)}
+                    className={`cursor-pointer rounded-[5px] border-l-[3px] px-3 py-2.5 text-[15px] font-medium transition-colors ${
+                      location.pathname === item.to
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-transparent text-ink hover:bg-surface-2"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </Can>
+              ))}
+            </div>
+          )}
         </nav>
 
         <div className="mt-3 border-t border-border pt-3">
