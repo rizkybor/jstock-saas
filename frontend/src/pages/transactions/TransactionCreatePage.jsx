@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
-import { Alert, Button, Card, CodeChip, Input, Select, Skeleton } from "../../components/ui";
+import { Alert, Button, Card, CodeChip, Input, RequiredMark, Select, Skeleton } from "../../components/ui";
 import { EMPTY_ADDRESS, fetchProvinces } from "../../utils/wilayah";
 
 const EMPTY_FORM = {
-  qty: "",
+  items: [], // { product, qty }
   senderMode: "existing",
   sender_user_id: "",
   sender_name: "",
@@ -37,6 +37,7 @@ export default function TransactionCreatePage() {
   const [clientAddresses, setClientAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [stagingQty, setStagingQty] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState(null);
@@ -109,13 +110,34 @@ export default function TransactionCreatePage() {
     );
   }, [searchQuery, products]);
 
+  const addItem = () => {
+    const qty = Number(stagingQty);
+    if (!matchedProduct || !qty || qty < 1) return;
+
+    setForm((f) => {
+      const existingIndex = f.items.findIndex((i) => i.product.id === matchedProduct.id);
+      if (existingIndex >= 0) {
+        const items = [...f.items];
+        items[existingIndex] = { ...items[existingIndex], qty: items[existingIndex].qty + qty };
+        return { ...f, items };
+      }
+      return { ...f, items: [...f.items, { product: matchedProduct, qty }] };
+    });
+    setSearchQuery("");
+    setStagingQty("");
+    setFieldErrors((errs) => ({ ...errs, items: undefined }));
+  };
+
+  const removeItem = (index) => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== index) }));
+
+  const grandTotal = form.items.reduce((sum, i) => sum + i.product.unit_cost * i.qty, 0);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
 
     const errors = {};
-    if (!matchedProduct) errors.product = "Barang tidak ditemukan — periksa ID Barang atau LOT/Batch.";
-    if (!form.qty || Number(form.qty) < 1) errors.qty = "Qty wajib diisi.";
+    if (form.items.length === 0) errors.items = "Tambahkan minimal satu barang.";
     if (form.senderMode === "existing" && !form.sender_user_id) errors.sender = "Pilih pengirim.";
     if (form.senderMode === "new" && !form.sender_name.trim()) errors.sender = "Nama Pengirim wajib diisi.";
     if (form.recipientMode === "existing" && !form.client_id) errors.client_id = "Pilih penerima.";
@@ -128,12 +150,17 @@ export default function TransactionCreatePage() {
         errors.address_id = "Isi label alamat baru (mis. Rumah, Kantor).";
       }
     }
+    if (form.recipientMode === "new" && !form.newAddress.label.trim()) {
+      errors.address_id = "Alamat penerima wajib diisi.";
+    }
     if (!form.no_invoice && !form.invoice_number.trim()) errors.invoice_number = "No. Invoice wajib diisi (atau centang Tanpa Invoice).";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     const usingExistingAddress = form.recipientMode === "existing" && form.addressMode === "existing" && form.address_id;
-    const usingNewAddress = form.recipientMode === "existing" && form.addressMode === "new" && form.newAddress.label.trim();
+    const usingNewAddress =
+      (form.recipientMode === "existing" && form.addressMode === "new" && form.newAddress.label.trim()) ||
+      (form.recipientMode === "new" && form.newAddress.label.trim());
 
     setSubmitting(true);
     try {
@@ -148,7 +175,7 @@ export default function TransactionCreatePage() {
         address: usingNewAddress ? form.newAddress : undefined,
         no_invoice: form.no_invoice,
         invoice_number: form.no_invoice ? undefined : form.invoice_number,
-        items: [{ product_id: matchedProduct.id, qty: Number(form.qty) }],
+        items: form.items.map((i) => ({ product_id: i.product.id, qty: i.qty })),
       });
       navigate(`/${tenantId}/transactions`);
     } catch (err) {
@@ -185,7 +212,6 @@ export default function TransactionCreatePage() {
               placeholder="mis. BRG-001 atau LOT-CH4-0625-014"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              error={fieldErrors.product}
             />
 
             <div className="mt-4 rounded-lg bg-surface-2 p-4">
@@ -206,24 +232,49 @@ export default function TransactionCreatePage() {
                     <div className="mt-1.5 text-sm text-ink-muted">Stok tersedia: {matchedProduct.stock_qty}</div>
                   </div>
 
-                  <Input
-                    label="Qty"
-                    type="number"
-                    min="1"
-                    value={form.qty}
-                    onChange={(e) => setForm({ ...form, qty: e.target.value })}
-                    error={fieldErrors.qty}
-                    required
-                  />
-
-                  {form.qty > 0 && (
-                    <div className="text-right text-sm font-semibold text-ink">
-                      Total Otomatis: {formatCurrency(matchedProduct.unit_cost * Number(form.qty || 0))}
+                  <div className="flex items-end gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Input
+                        label="Qty"
+                        type="number"
+                        min="1"
+                        value={stagingQty}
+                        onChange={(e) => setStagingQty(e.target.value)}
+                      />
                     </div>
-                  )}
+                    <Button type="button" variant="secondary" onClick={addItem} disabled={!stagingQty || Number(stagingQty) < 1}>
+                      + Tambah
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
+
+            {fieldErrors.items && <p className="mt-2 text-xs text-danger">{fieldErrors.items}</p>}
+
+            {form.items.length > 0 && (
+              <div className="mt-4 flex flex-col gap-2">
+                <div className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Barang Dipilih</div>
+                {form.items.map((item, index) => (
+                  <div key={item.product.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-ink">{item.product.name}</div>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-ink-muted">
+                        <CodeChip>{item.product.lot_batch}</CodeChip>
+                        <span>Qty: {item.qty}</span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="text-sm font-semibold text-ink">{formatCurrency(item.product.unit_cost * item.qty)}</span>
+                      <Button type="button" variant="danger" size="sm" onClick={() => removeItem(index)}>
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <div className="text-right text-sm font-semibold text-ink">Total: {formatCurrency(grandTotal)}</div>
+              </div>
+            )}
           </Card>
 
           <Card title="Data Pengirim & Penerima">
@@ -312,7 +363,10 @@ export default function TransactionCreatePage() {
 
               {form.recipientMode === "existing" && form.client_id && (
                 <div>
-                  <span className="mb-1.5 block text-sm font-semibold text-ink">Alamat Penerima</span>
+                  <span className="mb-1.5 block text-sm font-semibold text-ink">
+                    Alamat Penerima
+                    <RequiredMark />
+                  </span>
                   {addressesLoading ? (
                     <p className="text-sm text-ink-muted">Memuat alamat...</p>
                   ) : (
@@ -355,6 +409,22 @@ export default function TransactionCreatePage() {
                       )}
                     </>
                   )}
+                </div>
+              )}
+
+              {form.recipientMode === "new" && (
+                <div>
+                  <span className="mb-1.5 block text-sm font-semibold text-ink">
+                    Alamat Penerima
+                    <RequiredMark />
+                  </span>
+                  <AddressFieldset
+                    value={form.newAddress}
+                    provinces={provinces}
+                    onChange={(next) => setForm({ ...form, newAddress: next })}
+                  />
+                  {fieldErrors.address_id && <span className="mt-1 block text-xs text-danger">{fieldErrors.address_id}</span>}
+                  <p className="mt-1 text-xs text-ink-muted">Alamat penerima baru ini hanya disimpan untuk transaksi ini, bukan di Data Klien.</p>
                 </div>
               )}
             </div>

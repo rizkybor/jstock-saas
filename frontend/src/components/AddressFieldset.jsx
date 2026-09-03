@@ -93,12 +93,13 @@ export default function AddressFieldset({ value, provinces, onChange, onRemove }
   return (
     <div className="rounded-lg border border-border p-3">
       <div className="mb-3 flex items-center gap-2">
-        <Input
-          placeholder="Label (mis. Rumah, Kantor, Gudang)"
-          className="flex-1"
-          value={value.label}
-          onChange={(e) => onChange({ ...value, label: e.target.value })}
-        />
+        <div className="min-w-0 flex-1">
+          <Input
+            placeholder="Label (mis. Rumah, Kantor, Gudang)"
+            value={value.label}
+            onChange={(e) => onChange({ ...value, label: e.target.value })}
+          />
+        </div>
         {onRemove && (
           <Button type="button" variant="danger" size="sm" onClick={onRemove}>
             Hapus
