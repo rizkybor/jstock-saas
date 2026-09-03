@@ -57,7 +57,7 @@ class TenantAdminTest extends TestCase
             ->assertStatus(403);
 
         $this->actingAs($owner, 'sanctum')
-            ->patchJson("/api/admin/tenants/{$tenant->id}/suspend")
+            ->patchJson("/api/admin/tenants/{$tenant->token}/suspend")
             ->assertStatus(403);
     }
 
@@ -68,7 +68,7 @@ class TenantAdminTest extends TestCase
         $this->makeOwner($tenant);
 
         $this->actingAs($admin, 'sanctum')
-            ->patchJson("/api/admin/tenants/{$tenant->id}/suspend")
+            ->patchJson("/api/admin/tenants/{$tenant->token}/suspend")
             ->assertOk()
             ->assertJsonPath('data.status', 'suspended');
 
@@ -78,7 +78,7 @@ class TenantAdminTest extends TestCase
         ])->assertStatus(403);
 
         $this->actingAs($admin, 'sanctum')
-            ->patchJson("/api/admin/tenants/{$tenant->id}/activate")
+            ->patchJson("/api/admin/tenants/{$tenant->token}/activate")
             ->assertOk()
             ->assertJsonPath('data.status', 'active');
 

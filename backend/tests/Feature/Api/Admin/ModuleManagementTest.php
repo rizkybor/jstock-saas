@@ -49,13 +49,13 @@ class ModuleManagementTest extends TestCase
             ->assertStatus(403);
 
         $this->actingAs($admin, 'sanctum')
-            ->getJson("/api/admin/tenants/{$tenant->id}/modules")
+            ->getJson("/api/admin/tenants/{$tenant->token}/modules")
             ->assertOk()
             ->assertJsonPath('data.0.key', 'inventory-gas-kalibrasi')
             ->assertJsonPath('data.0.enabled', false);
 
         $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/admin/tenants/{$tenant->id}/modules/{$module->id}")
+            ->postJson("/api/admin/tenants/{$tenant->token}/modules/{$module->id}")
             ->assertOk();
 
         $this->actingAs($owner, 'sanctum')
@@ -63,7 +63,7 @@ class ModuleManagementTest extends TestCase
             ->assertOk();
 
         $this->actingAs($admin, 'sanctum')
-            ->deleteJson("/api/admin/tenants/{$tenant->id}/modules/{$module->id}")
+            ->deleteJson("/api/admin/tenants/{$tenant->token}/modules/{$module->id}")
             ->assertOk();
 
         $this->actingAs($owner, 'sanctum')
@@ -100,7 +100,7 @@ class ModuleManagementTest extends TestCase
             ->assertStatus(403);
 
         $this->actingAs($owner, 'sanctum')
-            ->postJson("/api/admin/tenants/{$tenant->id}/modules/{$module->id}")
+            ->postJson("/api/admin/tenants/{$tenant->token}/modules/{$module->id}")
             ->assertStatus(403);
     }
 }

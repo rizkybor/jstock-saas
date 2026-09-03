@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\TenantToken;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,7 +19,9 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'role' => $this->role,
             'is_active' => $this->is_active,
-            'tenant_id' => $this->tenant_id,
+            // Encrypted, not the raw tenant id — the frontend uses this for
+            // its /:tenantToken/... routes and never sees the real id.
+            'tenant_token' => $this->tenant_id ? TenantToken::encode($this->tenant_id) : null,
             'permissions' => $this->permissions(),
         ];
     }

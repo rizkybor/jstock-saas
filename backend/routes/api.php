@@ -55,7 +55,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('admin')->middleware('permission:admin.tenants.view')->group(function () {
         Route::get('/tenants', [AdminTenantController::class, 'index']);
+        Route::post('/tenants', [AdminTenantController::class, 'store']);
         Route::get('/tenants/{tenant}', [AdminTenantController::class, 'show']);
+        Route::put('/tenants/{tenant}', [AdminTenantController::class, 'update']);
         Route::patch('/tenants/{tenant}/suspend', [AdminTenantController::class, 'suspend']);
         Route::patch('/tenants/{tenant}/activate', [AdminTenantController::class, 'activate']);
         Route::get('/tenants/{tenant}/modules', [AdminTenantController::class, 'modules']);

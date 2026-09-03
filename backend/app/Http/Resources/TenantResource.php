@@ -13,9 +13,14 @@ class TenantResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            // Encrypted token, never the raw auto-increment id — see
+            // App\Support\TenantToken.
+            'token' => $this->token,
             'name' => $this->name,
             'slug' => $this->slug,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'address' => $this->address,
             'status' => $this->status,
             'trial_ends_at' => $this->trial_ends_at,
             'users_count' => $this->whenCounted('users'),

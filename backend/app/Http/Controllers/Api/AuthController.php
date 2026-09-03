@@ -12,7 +12,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -33,7 +32,7 @@ class AuthController extends Controller
         $user = DB::transaction(function () use ($data) {
             $tenant = Tenant::create([
                 'name' => $data['company_name'],
-                'slug' => $this->uniqueSlug($data['company_name']),
+                'slug' => Tenant::generateUniqueSlug($data['company_name']),
                 'status' => 'trial',
                 'trial_ends_at' => now()->addDays(14),
             ]);
@@ -132,19 +131,5 @@ class AuthController extends Controller
             'data' => new UserResource($request->user()),
             'message' => null,
         ]);
-    }
-
-    private function uniqueSlug(string $name): string
-    {
-        $base = Str::slug($name);
-        $slug = $base;
-        $suffix = 1;
-
-        while (Tenant::where('slug', $slug)->exists()) {
-            $slug = "{$base}-{$suffix}";
-            $suffix++;
-        }
-
-        return $slug;
     }
 }

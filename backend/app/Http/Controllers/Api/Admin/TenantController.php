@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreTenantRequest;
+use App\Http\Requests\Admin\UpdateTenantRequest;
 use App\Http\Resources\ModuleResource;
 use App\Http\Resources\TenantResource;
 use App\Models\Module;
+use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TenantController extends Controller
 {
@@ -32,6 +37,76 @@ class TenantController extends Controller
                 'last_page' => $tenants->lastPage(),
                 'total' => $tenants->total(),
             ],
+        ]);
+    }
+
+    /**
+     * Super Admin creates a tenant directly (no self-registration): the
+     * company profile, its Owner account, a trial subscription — same as
+     * self-registration — and optionally the module set to grant up front.
+     */
+    public function store(StoreTenantRequest $request)
+    {
+        $data = $request->validated();
+
+        $tenant = DB::transaction(function () use ($data) {
+            $tenant = Tenant::create([
+                'name' => $data['name'],
+                'slug' => Tenant::generateUniqueSlug($data['name']),
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
+                'address' => $data['address'] ?? null,
+                'status' => 'trial',
+                'trial_ends_at' => now()->addDays(14),
+            ]);
+
+            $trialPlan = Plan::firstOrCreate(
+                ['slug' => 'trial'],
+                ['name' => 'Trial', 'price' => 0, 'max_users' => 3, 'max_transactions_per_month' => 50]
+            );
+
+            Subscription::create([
+                'tenant_id' => $tenant->id,
+                'plan_id' => $trialPlan->id,
+                'status' => 'trialing',
+                'started_at' => now(),
+                'ends_at' => $tenant->trial_ends_at,
+            ]);
+
+            User::create([
+                'tenant_id' => $tenant->id,
+                'name' => $data['owner_name'],
+                'email' => $data['owner_email'],
+                'password' => $data['owner_password'],
+                'role' => 'owner',
+                'is_active' => true,
+            ]);
+
+            if (! empty($data['module_ids'])) {
+                $tenant->modules()->attach($data['module_ids']);
+            }
+
+            return $tenant;
+        });
+
+        $tenant->loadCount('users')->load(['activeSubscription.plan', 'modules']);
+
+        return response()->json([
+            'success' => true,
+            'data' => new TenantResource($tenant),
+            'message' => 'Tenant baru berhasil dibuat.',
+        ], 201);
+    }
+
+    public function update(UpdateTenantRequest $request, Tenant $tenant)
+    {
+        $tenant->update($request->validated());
+        $tenant->loadCount('users')->load(['activeSubscription.plan', 'modules']);
+
+        return response()->json([
+            'success' => true,
+            'data' => new TenantResource($tenant),
+            'message' => 'Profil tenant berhasil diperbarui.',
         ]);
     }
 
