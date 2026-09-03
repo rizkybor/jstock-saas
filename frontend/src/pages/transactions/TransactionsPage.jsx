@@ -214,6 +214,13 @@ export default function TransactionsPage() {
                 </div>
               </div>
 
+              <div>
+                <div className="text-xs text-ink-muted">No. Invoice</div>
+                <div className="text-sm font-medium text-ink">
+                  {selected.no_invoice ? "Tanpa Invoice" : (selected.invoice_number ?? "-")}
+                </div>
+              </div>
+
               {!isPending && (
                 <div>
                   <Badge status={selected.status}>{selected.status}</Badge>

@@ -13,6 +13,8 @@ const EMPTY_FORM = {
   recipient_name: "",
   recipient_position: "",
   recipient_company: "",
+  invoice_number: "",
+  no_invoice: false,
 };
 
 const formatCurrency = (value) => `Rp ${Number(value).toLocaleString("id-ID")}`;
@@ -82,6 +84,7 @@ export default function TransactionCreatePage() {
     if (form.senderMode === "new" && !form.sender_name.trim()) errors.sender = "Nama Pengirim wajib diisi.";
     if (form.recipientMode === "existing" && !form.client_id) errors.client_id = "Pilih penerima.";
     if (form.recipientMode === "new" && !form.recipient_name.trim()) errors.recipient_name = "Nama Penerima wajib diisi.";
+    if (!form.no_invoice && !form.invoice_number.trim()) errors.invoice_number = "No. Invoice wajib diisi (atau centang Tanpa Invoice).";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -94,6 +97,8 @@ export default function TransactionCreatePage() {
         recipient_name: form.recipientMode === "new" ? form.recipient_name : undefined,
         recipient_position: form.recipient_position || undefined,
         recipient_company: form.recipient_company || undefined,
+        no_invoice: form.no_invoice,
+        invoice_number: form.no_invoice ? undefined : form.invoice_number,
         items: [{ product_id: matchedProduct.id, qty: Number(form.qty) }],
       });
       navigate(`/${tenantId}/transactions`);
@@ -258,6 +263,27 @@ export default function TransactionCreatePage() {
             </div>
           </Card>
         </div>
+
+        <Card title="Invoice" className="mt-6">
+          <Input
+            label="No. Invoice"
+            placeholder="mis. INV-2026-0001"
+            value={form.invoice_number}
+            onChange={(e) => setForm({ ...form, invoice_number: e.target.value })}
+            error={fieldErrors.invoice_number}
+            disabled={form.no_invoice}
+            required={!form.no_invoice}
+          />
+          <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={form.no_invoice}
+              onChange={(e) => setForm({ ...form, no_invoice: e.target.checked, invoice_number: e.target.checked ? "" : form.invoice_number })}
+              className="h-4 w-4 cursor-pointer accent-primary"
+            />
+            Tanpa Invoice
+          </label>
+        </Card>
 
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={() => navigate(`/${tenantId}/transactions`)}>
