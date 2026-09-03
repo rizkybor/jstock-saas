@@ -34,8 +34,8 @@ export default function TransactionsPage() {
       const { data } = await apiClient.get("/transactions", { params: { page } });
       setTransactions(data.data);
       setMeta(data.meta);
-    } catch {
-      setError("Gagal memuat data transaksi.");
+    } catch (err) {
+      setError(err.response?.data?.message ?? "Gagal memuat data transaksi.");
     } finally {
       setLoading(false);
     }

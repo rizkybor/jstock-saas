@@ -3,11 +3,11 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Can from "../routes/Can";
 
-const TENANT_NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", permission: "dashboard.view" },
-  { to: "/clients", label: "Data Klien", permission: "clients.view" },
-  { to: "/products", label: "Data Barang", permission: "products.view" },
-  { to: "/transactions", label: "Transaksi", permission: "transactions.view" },
+const tenantNavItems = (tenantId) => [
+  { to: `/${tenantId}/dashboard`, label: "Dashboard", permission: "dashboard.view" },
+  { to: `/${tenantId}/clients`, label: "Data Klien", permission: "clients.view" },
+  { to: `/${tenantId}/products`, label: "Data Barang", permission: "products.view" },
+  { to: `/${tenantId}/transactions`, label: "Transaksi", permission: "transactions.view" },
 ];
 
 // Super Admin operates at platform level only — it never sees tenant
@@ -19,7 +19,7 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const navItems = user?.role === "super_admin" ? PLATFORM_NAV_ITEMS : TENANT_NAV_ITEMS;
+  const navItems = user?.role === "super_admin" ? PLATFORM_NAV_ITEMS : tenantNavItems(user?.tenant_id);
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (

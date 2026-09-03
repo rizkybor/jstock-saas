@@ -1,4 +1,6 @@
 /** Where a user lands right after login, or when hitting an unknown URL. */
 export function homeRouteFor(user) {
-  return user?.role === "super_admin" ? "/admin/tenants" : "/dashboard";
+  if (user?.role === "super_admin") return "/admin/tenants";
+  if (user?.tenant_id) return `/${user.tenant_id}/dashboard`;
+  return "/login";
 }

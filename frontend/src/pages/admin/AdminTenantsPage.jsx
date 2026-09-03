@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, CodeChip, DataTable, PageHeader, Pagination, StatTile } from "../../components/ui";
+import { Alert, Badge, Button, CodeChip, DataTable, Modal, PageHeader, Pagination, StatTile } from "../../components/ui";
 
 export default function AdminTenantsPage() {
   const [tenants, setTenants] = useState([]);
@@ -8,6 +8,11 @@ export default function AdminTenantsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+
+  const [moduleTenant, setModuleTenant] = useState(null);
+  const [moduleList, setModuleList] = useState([]);
+  const [moduleLoading, setModuleLoading] = useState(false);
+  const [moduleError, setModuleError] = useState(null);
 
   const loadTenants = async (page = 1) => {
     setLoading(true);
@@ -54,6 +59,40 @@ export default function AdminTenantsPage() {
     }
   };
 
+  const openModules = async (tenant) => {
+    setModuleTenant(tenant);
+    setModuleError(null);
+    setModuleLoading(true);
+    try {
+      const { data } = await apiClient.get(`/admin/tenants/${tenant.id}/modules`);
+      setModuleList(data.data);
+    } catch {
+      setModuleError("Gagal memuat modul tenant ini.");
+    } finally {
+      setModuleLoading(false);
+    }
+  };
+
+  const closeModules = () => {
+    setModuleTenant(null);
+    setModuleList([]);
+  };
+
+  const toggleModule = async (module) => {
+    setModuleError(null);
+    try {
+      if (module.enabled) {
+        await apiClient.delete(`/admin/tenants/${moduleTenant.id}/modules/${module.id}`);
+      } else {
+        await apiClient.post(`/admin/tenants/${moduleTenant.id}/modules/${module.id}`);
+      }
+      setModuleList((list) => list.map((m) => (m.id === module.id ? { ...m, enabled: !m.enabled } : m)));
+      await loadTenants(meta.current_page);
+    } catch (err) {
+      setModuleError(err.response?.data?.message ?? "Gagal memperbarui modul.");
+    }
+  };
+
   const columns = [
     { key: "name", header: "Nama Perusahaan" },
     { key: "slug", header: "Slug", render: (row) => <CodeChip>{row.slug}</CodeChip> },
@@ -61,16 +100,37 @@ export default function AdminTenantsPage() {
     { key: "users_count", header: "Jumlah User" },
     { key: "plan", header: "Plan", render: (row) => row.plan ?? "-" },
     {
+      key: "modules",
+      header: "Modul Aktif",
+      render: (row) =>
+        row.modules?.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {row.modules.map((m) => (
+              <Badge key={m.id} status="active">
+                {m.name}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs text-ink-faint">Belum ada modul</span>
+        ),
+    },
+    {
       key: "actions",
       header: "Aksi",
       render: (row) => (
-        <Button
-          variant={row.status === "suspended" ? "primary" : "danger"}
-          size="sm"
-          onClick={() => toggleStatus(row)}
-        >
-          {row.status === "suspended" ? "Aktifkan" : "Suspend"}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => openModules(row)}>
+            Kelola Modul
+          </Button>
+          <Button
+            variant={row.status === "suspended" ? "primary" : "danger"}
+            size="sm"
+            onClick={() => toggleStatus(row)}
+          >
+            {row.status === "suspended" ? "Aktifkan" : "Suspend"}
+          </Button>
+        </div>
       ),
     },
   ];
@@ -114,6 +174,50 @@ export default function AdminTenantsPage() {
             onPageChange={loadTenants}
           />
         </>
+      )}
+
+      {moduleTenant && (
+        <Modal
+          title="Kelola Modul"
+          description={`Tentukan modul sistem yang aktif untuk "${moduleTenant.name}". Modul baru bisa ditambahkan di sini setelah fitur/proses bisnisnya selesai dibangun.`}
+          onClose={closeModules}
+        >
+          {moduleError && (
+            <div className="mb-3">
+              <Alert>{moduleError}</Alert>
+            </div>
+          )}
+
+          {moduleLoading ? (
+            <p className="text-sm text-ink-muted">Memuat...</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {moduleList.map((module) => (
+                <label
+                  key={module.id}
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-surface-2"
+                >
+                  <input
+                    type="checkbox"
+                    checked={module.enabled}
+                    onChange={() => toggleModule(module)}
+                    className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
+                  />
+                  <div>
+                    <div className="text-sm font-semibold text-ink">{module.name}</div>
+                    {module.description && <div className="text-xs text-ink-muted">{module.description}</div>}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-5 flex justify-end">
+            <Button variant="secondary" onClick={closeModules}>
+              Tutup
+            </Button>
+          </div>
+        </Modal>
       )}
     </div>
   );

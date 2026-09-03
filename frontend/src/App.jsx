@@ -8,6 +8,7 @@ import TransactionsPage from "./pages/transactions/TransactionsPage";
 import AdminTenantsPage from "./pages/admin/AdminTenantsPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RequirePermission from "./routes/RequirePermission";
+import RequireOwnTenant from "./routes/RequireOwnTenant";
 import { homeRouteFor } from "./routes/homeRoute";
 import { useAuth } from "./context/AuthContext";
 
@@ -23,10 +24,12 @@ function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/clients" element={<ClientsPage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/transactions" element={<TransactionsPage />} />
+          <Route element={<RequireOwnTenant />}>
+            <Route path="/:tenantId/dashboard" element={<DashboardPage />} />
+            <Route path="/:tenantId/clients" element={<ClientsPage />} />
+            <Route path="/:tenantId/products" element={<ProductsPage />} />
+            <Route path="/:tenantId/transactions" element={<TransactionsPage />} />
+          </Route>
 
           <Route element={<RequirePermission permission="admin.tenants.view" />}>
             <Route path="/admin/tenants" element={<AdminTenantsPage />} />

@@ -30,8 +30,8 @@ export default function ClientsPage() {
       const { data } = await apiClient.get("/clients", { params: { page } });
       setClients(data.data);
       setMeta(data.meta);
-    } catch {
-      setError("Gagal memuat data klien.");
+    } catch (err) {
+      setError(err.response?.data?.message ?? "Gagal memuat data klien.");
     } finally {
       setLoading(false);
     }

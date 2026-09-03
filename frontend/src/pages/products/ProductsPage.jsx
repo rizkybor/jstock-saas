@@ -31,8 +31,8 @@ export default function ProductsPage() {
       const { data } = await apiClient.get("/products", { params: { page } });
       setProducts(data.data);
       setMeta(data.meta);
-    } catch {
-      setError("Gagal memuat data barang.");
+    } catch (err) {
+      setError(err.response?.data?.message ?? "Gagal memuat data barang.");
     } finally {
       setLoading(false);
     }
