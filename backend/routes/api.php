@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\RecipientController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SenderController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', fn () => response()->json(['success' => true, 'message' => 'pong']));
@@ -47,6 +48,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/products/{product}', [ProductController::class, 'show'])->middleware('permission:products.view');
         Route::put('/products/{product}', [ProductController::class, 'update'])->middleware('permission:products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('permission:products.delete');
+
+        Route::get('/users', [UserController::class, 'index'])->middleware('permission:transactions.view');
 
         Route::get('/senders', [SenderController::class, 'index'])->middleware('permission:transactions.view');
         Route::post('/senders', [SenderController::class, 'store'])->middleware('permission:transactions.create');

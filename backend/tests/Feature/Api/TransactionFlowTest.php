@@ -174,4 +174,26 @@ class TransactionFlowTest extends TestCase
             'items' => [['product_id' => $productB->id, 'qty' => 1]],
         ])->assertJsonPath('data.trx_number', 'TRX-0001');
     }
+
+    public function test_users_endpoint_lists_only_this_tenants_active_accounts_for_the_pengirim_dropdown(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b', 'status' => 'trial']);
+        $this->enableInventoryModule($tenantA);
+        $ownerA = $this->makeUser($tenantA, 'owner');
+        $this->makeUser($tenantB, 'owner');
+        $inactive = User::create([
+            'tenant_id' => $tenantA->id, 'name' => 'Inactive Guy', 'email' => 'inactive@test.local',
+            'password' => 'password123', 'role' => 'operator', 'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($ownerA, 'sanctum')
+            ->getJson('/api/users')
+            ->assertOk();
+
+        $names = collect($response->json('data'))->pluck('name');
+        $this->assertContains('Test owner', $names);
+        $this->assertNotContains('Inactive Guy', $names);
+        $this->assertCount(1, $names);
+    }
 }
