@@ -21,6 +21,7 @@ class ClientResource extends JsonResource
             'email' => $this->email,
             'address' => $this->address,
             'addresses' => ClientAddressResource::collection($this->whenLoaded('addresses')),
+            'addresses_count' => $this->whenCounted('addresses'),
             'is_active' => $this->is_active,
             'created_at' => $this->created_at,
         ];

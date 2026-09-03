@@ -15,6 +15,7 @@ class ClientController extends Controller
     public function index(Request $request)
     {
         $clients = Client::query()
+            ->withCount('addresses')
             ->when($request->string('q')->isNotEmpty(), function ($query) use ($request) {
                 $search = $request->string('q');
                 $query->where(function ($query) use ($search) {
