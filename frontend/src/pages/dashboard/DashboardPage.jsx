@@ -47,28 +47,32 @@ export default function DashboardPage() {
           <Skeleton className="h-24 w-full" />
         </div>
       ) : (
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatTile label="Jumlah Stok Barang" value={summary.item_count} />
-          <StatTile label="Menunggu Approval" value={summary.pending_count} />
-          <StatTile label="Transaksi Bulan Ini" value={summary.transactions_this_month} />
-        </div>
+        summary && (
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatTile label="Jumlah Stok Barang" value={summary.item_count} />
+            <StatTile label="Menunggu Approval" value={summary.pending_count} />
+            <StatTile label="Transaksi Bulan Ini" value={summary.transactions_this_month} />
+          </div>
+        )
       )}
 
-      <h3 className="mb-3 text-base font-semibold text-ink">Transaksi Menunggu Approval</h3>
-      {loading ? (
-        <Skeleton className="h-40 w-full" />
-      ) : summary.pending_transactions.length === 0 ? (
-        <EmptyState
-          title="Tidak ada transaksi menunggu approval"
-          description="Semua transaksi sudah diproses. Transaksi baru akan muncul di sini saat menunggu persetujuan."
-        />
-      ) : (
-        <DataTable
-          columns={columns}
-          rows={summary.pending_transactions}
-          rowKey={(row) => row.id}
-          showIndex={false}
-        />
+      {!loading && summary && (
+        <>
+          <h3 className="mb-3 text-base font-semibold text-ink">Transaksi Menunggu Approval</h3>
+          {summary.pending_transactions.length === 0 ? (
+            <EmptyState
+              title="Tidak ada transaksi menunggu approval"
+              description="Semua transaksi sudah diproses. Transaksi baru akan muncul di sini saat menunggu persetujuan."
+            />
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={summary.pending_transactions}
+              rowKey={(row) => row.id}
+              showIndex={false}
+            />
+          )}
+        </>
       )}
     </div>
   );

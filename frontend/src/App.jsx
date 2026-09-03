@@ -9,6 +9,11 @@ import TransactionsPage from "./pages/transactions/TransactionsPage";
 import TransactionCreatePage from "./pages/transactions/TransactionCreatePage";
 import TransactionScanPage from "./pages/transactions/TransactionScanPage";
 import LaporanPage from "./pages/reports/LaporanPage";
+import WarehouseLocationsPage from "./pages/warehouse/WarehouseLocationsPage";
+import WarehouseItemsPage from "./pages/warehouse/WarehouseItemsPage";
+import WarehouseStockPage from "./pages/warehouse/WarehouseStockPage";
+import WarehousePurchaseOrdersPage from "./pages/warehouse/WarehousePurchaseOrdersPage";
+import WarehouseStockOpnamePage from "./pages/warehouse/WarehouseStockOpnamePage";
 import AdminTenantsPage from "./pages/admin/AdminTenantsPage";
 import TenantConfigurationPage from "./pages/admin/TenantConfigurationPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -45,6 +50,12 @@ function App() {
             <Route path="/:tenantId/transactions" element={<TransactionsPage />} />
             <Route path="/:tenantId/transactions/new" element={<TransactionCreatePage />} />
             <Route path="/:tenantId/reports" element={<LaporanPage />} />
+
+            <Route path="/:tenantId/warehouse/locations" element={<WarehouseLocationsPage />} />
+            <Route path="/:tenantId/warehouse/items" element={<WarehouseItemsPage />} />
+            <Route path="/:tenantId/warehouse/stock" element={<WarehouseStockPage />} />
+            <Route path="/:tenantId/warehouse/purchase-orders" element={<WarehousePurchaseOrdersPage />} />
+            <Route path="/:tenantId/warehouse/stock-opname" element={<WarehouseStockOpnamePage />} />
           </Route>
 
           <Route element={<RequirePermission permission="admin.tenants.view" />}>
