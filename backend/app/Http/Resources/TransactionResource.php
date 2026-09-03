@@ -22,6 +22,7 @@ class TransactionResource extends JsonResource
             'client' => $this->whenLoaded('client', fn () => $this->client?->only(['id', 'company_name', 'pic_name'])),
             'sender' => $this->whenLoaded('sender', fn () => $this->sender?->only(['id', 'name'])),
             'recipient' => $this->whenLoaded('recipient', fn () => $this->recipient?->only(['id', 'name', 'position', 'company'])),
+            'recipient_address' => $this->whenLoaded('recipientAddress', fn () => $this->recipientAddress ? new ClientAddressResource($this->recipientAddress) : null),
             'items' => TransactionItemResource::collection($this->whenLoaded('items')),
             'invoice' => new InvoiceResource($this->whenLoaded('invoice')),
             'pending_approval' => $this->whenLoaded(

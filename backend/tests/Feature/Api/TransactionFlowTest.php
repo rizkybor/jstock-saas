@@ -367,4 +367,70 @@ class TransactionFlowTest extends TestCase
             'items' => [['product_id' => $product->id, 'qty' => 1]],
         ])->assertStatus(422)->assertJsonValidationErrors('invoice_number');
     }
+
+    public function test_an_existing_client_address_can_be_attached_to_the_transaction(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+        $client = Client::create(['tenant_id' => $tenant->id, 'company_name' => 'PT Contoh', 'pic_name' => 'Andi']);
+        $address = $client->addresses()->create(['label' => 'Kantor', 'detail' => 'Jl. Contoh No. 1']);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'client_id' => $client->id,
+            'address_id' => $address->id,
+            'no_invoice' => true,
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()
+            ->assertJsonPath('data.recipient_address.label', 'Kantor')
+            ->assertJsonPath('data.recipient_address.detail', 'Jl. Contoh No. 1');
+
+        $this->assertSame(1, $client->addresses()->count());
+    }
+
+    public function test_a_new_address_typed_on_the_transaction_is_saved_to_the_client(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+        $client = Client::create(['tenant_id' => $tenant->id, 'company_name' => 'PT Contoh', 'pic_name' => 'Andi']);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'client_id' => $client->id,
+            'address' => ['label' => 'Gudang', 'detail' => 'Jl. Gudang Baru No. 9'],
+            'no_invoice' => true,
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()
+            ->assertJsonPath('data.recipient_address.label', 'Gudang');
+
+        $this->assertSame(1, $client->addresses()->count());
+        $this->assertDatabaseHas('client_addresses', [
+            'client_id' => $client->id,
+            'label' => 'Gudang',
+            'detail' => 'Jl. Gudang Baru No. 9',
+        ]);
+    }
+
+    public function test_an_address_id_from_a_different_client_is_rejected(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+        $clientA = Client::create(['tenant_id' => $tenant->id, 'company_name' => 'PT A', 'pic_name' => 'Andi']);
+        $clientB = Client::create(['tenant_id' => $tenant->id, 'company_name' => 'PT B', 'pic_name' => 'Budi']);
+        $addressOfB = $clientB->addresses()->create(['label' => 'Kantor', 'detail' => 'Jl. B']);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'client_id' => $clientA->id,
+            'address_id' => $addressOfB->id,
+            'no_invoice' => true,
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertStatus(422)->assertJsonValidationErrors('address_id');
+    }
 }

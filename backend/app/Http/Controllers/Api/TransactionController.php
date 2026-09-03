@@ -7,6 +7,7 @@ use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Resources\TransactionResource;
 use App\Models\ApprovalStep;
 use App\Models\Client;
+use App\Models\ClientAddress;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Recipient;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 
 class TransactionController extends Controller
 {
-    private const WITH_RELATIONS = ['client', 'sender', 'recipient', 'currentApprovalStep', 'items.product', 'invoice', 'approvals.approver', 'approvals.approvalStep'];
+    private const WITH_RELATIONS = ['client', 'sender', 'recipient', 'recipientAddress', 'currentApprovalStep', 'items.product', 'invoice', 'approvals.approver', 'approvals.approvalStep'];
 
     public function index(Request $request)
     {
@@ -91,6 +92,19 @@ class TransactionController extends Controller
                 ])->id;
             }
 
+            if (! empty($data['address_id'])) {
+                $recipientAddressId = $data['address_id'];
+            } elseif (! empty($data['address']) && ! empty($data['client_id'])) {
+                // A new address typed for this transaction is saved back to
+                // the client's address book, not just this one transaction.
+                $recipientAddressId = ClientAddress::create([
+                    'client_id' => $data['client_id'],
+                    ...$data['address'],
+                ])->id;
+            } else {
+                $recipientAddressId = null;
+            }
+
             $products = Product::whereIn('id', collect($data['items'])->pluck('product_id'))
                 ->get()
                 ->keyBy('id');
@@ -126,6 +140,7 @@ class TransactionController extends Controller
             $transaction = Transaction::create([
                 'trx_number' => $this->generateTrxNumber($tenant->id),
                 'client_id' => $data['client_id'] ?? null,
+                'recipient_address_id' => $recipientAddressId,
                 'sender_id' => $senderId,
                 'recipient_id' => $recipientId,
                 'status' => 'pending',
