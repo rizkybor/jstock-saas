@@ -818,7 +818,7 @@ export default function ProductsPage() {
                   </div>
                 </div>
                 <p className="mt-3 text-xs text-ink-muted">
-                  Produk ini asli, diproduksi oleh {user?.tenant_name ?? "tenant terverifikasi"}.
+                  Authentic product, officially manufactured by {user?.tenant_name ?? "tenant terverifikasi"}.
                 </p>
               </div>
             )}

@@ -172,12 +172,13 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
     if (barcodeUrl) {
       try {
         const img = await loadImage(barcodeUrl);
-        const boxH = 45;
+        const boxH = 65;
         const scale = Math.min(contentWidth / img.width, boxH / img.height);
         const w = img.width * scale;
         const h = img.height * scale;
         y += 8;
-        ctx.drawImage(img, padding, y, w, h);
+        ctx.drawImage(img, padding + (contentWidth - w) / 2, y, w, h);
+        // ctx.drawImage(img, padding, y, w, h); RATA KIRI
         y += h + 10;
       } catch {
         // Non-fatal: the receipt still prints fine without the barcode image.
