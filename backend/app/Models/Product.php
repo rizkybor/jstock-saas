@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'tenant_id', 'product_series_id', 'name', 'lot_batch', 'unique_id',
+    'tenant_id', 'product_series_id', 'name', 'lot_batch', 'unique_id', 'item_detail',
     'unit_cost', 'grand_total_cost', 'cogs', 'stock_qty', 'input_date',
 ])]
 class Product extends Model

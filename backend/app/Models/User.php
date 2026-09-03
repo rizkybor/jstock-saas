@@ -44,11 +44,25 @@ class User extends Authenticatable
     }
 
     /**
+     * A tenant's Super-Admin-defined override (tenant_role_permissions) wins
+     * over the platform default (config/permissions.php) when present —
+     * every tenant starts on the default until Super Admin customizes a
+     * role for it. super_admin itself is never overridable.
+     *
      * @return array<int, string>
      */
     public function permissions(): array
     {
-        return config("permissions.{$this->role}", []);
+        if ($this->role === 'super_admin') {
+            return config('permissions.super_admin', ['*']);
+        }
+
+        $custom = TenantRolePermission::where('tenant_id', $this->tenant_id)
+            ->where('role', $this->role)
+            ->pluck('permission')
+            ->all();
+
+        return $custom ?: config("permissions.{$this->role}", []);
     }
 
     public function hasPermission(string $permission): bool

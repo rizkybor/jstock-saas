@@ -52,6 +52,7 @@ class ProductController extends Controller
             'product_series_id' => $data['product_series_id'] ?? null,
             'lot_batch' => $data['lot_batch'] ?? $this->generateLotBatch(),
             'unique_id' => $data['unique_id'] ?? null,
+            'item_detail' => $data['item_detail'] ?? null,
             'unit_cost' => $data['unit_cost'],
             'grand_total_cost' => $grandTotalCost,
             'cogs' => $cogs,

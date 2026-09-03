@@ -17,6 +17,8 @@ class ProductResource extends JsonResource
             'name' => $this->name,
             'lot_batch' => $this->lot_batch,
             'unique_id' => $this->unique_id,
+            'item_detail' => $this->item_detail,
+            'product_series_id' => $this->product_series_id,
             'series' => new ProductSeriesResource($this->whenLoaded('series')),
             'unit_cost' => (float) $this->unit_cost,
             'grand_total_cost' => (float) $this->grand_total_cost,

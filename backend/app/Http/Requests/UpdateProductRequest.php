@@ -25,6 +25,7 @@ class UpdateProductRequest extends FormRequest
             ],
             'lot_batch' => ['nullable', 'string', 'max:100'],
             'unique_id' => ['nullable', 'string', 'max:100'],
+            'item_detail' => ['nullable', 'string', 'max:1000'],
             'unit_cost' => ['sometimes', 'required', 'numeric', 'min:0'],
             'stock_qty' => ['sometimes', 'required', 'integer', 'min:0'],
             'input_date' => ['nullable', 'date'],
