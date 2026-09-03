@@ -34,6 +34,24 @@ class Module extends Model
         ],
     ];
 
+    /**
+     * Permission-string groups (the part before the first dot, same
+     * grouping RolePermissionController::catalog() uses) that belong to
+     * each module — what filters the Roles & Permission checklist down to
+     * only the module(s) a tenant actually has. A group not listed here
+     * (tenant, users, billing) is core/platform-level and always shown.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const PERMISSION_GROUPS = [
+        'inventory-gas-kalibrasi' => [
+            'clients', 'products', 'product-series', 'transactions', 'invoices', 'signatures', 'reports', 'dashboard',
+        ],
+        'warehouse-general' => [
+            'warehouse-locations', 'warehouse-items', 'warehouse-stock', 'warehouse-suppliers', 'warehouse-purchase-orders',
+        ],
+    ];
+
     protected function casts(): array
     {
         return [

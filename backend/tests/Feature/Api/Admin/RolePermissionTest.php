@@ -134,7 +134,7 @@ class RolePermissionTest extends TestCase
         $owner = $this->makeUser($tenant, 'owner');
 
         $this->actingAs($owner, 'sanctum')
-            ->getJson('/api/admin/permissions/catalog')
+            ->getJson("/api/admin/tenants/{$tenant->token}/permissions/catalog")
             ->assertStatus(403);
 
         $this->actingAs($owner, 'sanctum')
@@ -145,13 +145,36 @@ class RolePermissionTest extends TestCase
     public function test_catalog_groups_permissions_by_module(): void
     {
         $admin = $this->makeSuperAdmin();
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
 
         $response = $this->actingAs($admin, 'sanctum')
-            ->getJson('/api/admin/permissions/catalog')
+            ->getJson("/api/admin/tenants/{$tenant->token}/permissions/catalog")
             ->assertOk();
 
         $modules = collect($response->json('data'))->pluck('module');
         $this->assertContains('clients', $modules);
         $this->assertContains('transactions', $modules);
+    }
+
+    public function test_catalog_only_shows_permission_groups_for_the_tenants_active_module(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->getJson("/api/admin/tenants/{$tenant->token}/permissions/catalog")
+            ->assertOk();
+
+        $modules = collect($response->json('data'))->pluck('module');
+        $this->assertContains('clients', $modules);
+        // No warehouse-general module for this tenant, so its permission
+        // groups must not appear in the checklist.
+        $this->assertNotContains('warehouse-locations', $modules);
+
+        // Core, non-module-specific groups are always shown.
+        $this->assertContains('tenant', $modules);
+        $this->assertContains('users', $modules);
     }
 }

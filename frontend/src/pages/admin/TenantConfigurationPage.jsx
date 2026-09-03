@@ -198,7 +198,7 @@ export default function TenantConfigurationPage() {
     setRoleError(null);
     try {
       const [catalogRes, rolesRes] = await Promise.all([
-        apiClient.get("/admin/permissions/catalog"),
+        apiClient.get(`/admin/tenants/${tenantToken}/permissions/catalog`),
         apiClient.get(`/admin/tenants/${tenantToken}/roles`),
       ]);
       setPermissionCatalog(catalogRes.data.data);
@@ -327,6 +327,9 @@ export default function TenantConfigurationPage() {
       await apiClient.post(`/admin/tenants/${tenantToken}/modules/${module.id}`);
       await loadMenuSettings(module);
       setCatalogModules((list) => list.map((m) => ({ ...m, enabled: m.id === module.id })));
+      // The Roles & Permission checklist is filtered by active module, so
+      // it needs to reload the moment that changes.
+      await loadRoles();
     } catch (err) {
       setModuleError(err.response?.data?.message ?? "Gagal memperbarui modul.");
     } finally {
@@ -340,6 +343,7 @@ export default function TenantConfigurationPage() {
     try {
       await apiClient.delete(`/admin/tenants/${tenantToken}/modules/${module.id}`);
       setCatalogModules((list) => list.map((m) => (m.id === module.id ? { ...m, enabled: false } : m)));
+      await loadRoles();
     } catch (err) {
       setModuleError(err.response?.data?.message ?? "Gagal menonaktifkan modul.");
     } finally {

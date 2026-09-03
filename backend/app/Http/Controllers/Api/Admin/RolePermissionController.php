@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Module;
 use App\Models\Tenant;
 use App\Models\TenantRolePermission;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class RolePermissionController extends Controller
@@ -14,11 +16,16 @@ class RolePermissionController extends Controller
     /**
      * Every permission string the platform knows about (the 4 preset role
      * matrices in config/permissions.php cover the full set), grouped by
-     * module (the part before the first dot) — what the checklist UI renders
-     * regardless of which roles a given tenant actually uses.
+     * module (the part before the first dot), then narrowed down to the
+     * groups relevant for this tenant: a group belonging to a module
+     * (Module::PERMISSION_GROUPS) is only kept if the tenant actually has
+     * that module; a group that isn't module-specific (tenant, users,
+     * billing) is core/platform-level and always shown.
      */
-    public function catalog()
+    public function catalog(Tenant $tenant)
     {
+        $tenantModuleKeys = $tenant->modules()->pluck('key');
+
         $all = collect(config('permissions'))
             ->except('super_admin')
             ->flatten()
@@ -28,14 +35,28 @@ class RolePermissionController extends Controller
 
         $grouped = $all->groupBy(fn ($permission) => explode('.', $permission)[0]);
 
+        $relevant = $grouped->filter(fn ($permissions, $module) => $this->groupAppliesToTenant($module, $tenantModuleKeys));
+
         return response()->json([
             'success' => true,
-            'data' => $grouped->map(fn ($permissions, $module) => [
+            'data' => $relevant->map(fn ($permissions, $module) => [
                 'module' => $module,
                 'permissions' => $permissions->values(),
             ])->values(),
             'message' => null,
         ]);
+    }
+
+    /**
+     * A permission group is relevant to a tenant if it isn't tied to any
+     * module at all (core/platform-level), or if it's tied to one of the
+     * modules the tenant currently has.
+     */
+    private function groupAppliesToTenant(string $group, Collection $tenantModuleKeys): bool
+    {
+        $owningModule = collect(Module::PERMISSION_GROUPS)->search(fn ($groups) => in_array($group, $groups, true));
+
+        return $owningModule === false || $tenantModuleKeys->contains($owningModule);
     }
 
     /**
@@ -86,7 +107,14 @@ class RolePermissionController extends Controller
     {
         $this->assertActiveRole($tenant, $role);
 
-        $validCatalog = collect(config('permissions'))->except('super_admin')->flatten()->unique()->values()->all();
+        $tenantModuleKeys = $tenant->modules()->pluck('key');
+        $validCatalog = collect(config('permissions'))
+            ->except('super_admin')
+            ->flatten()
+            ->unique()
+            ->filter(fn ($permission) => $this->groupAppliesToTenant(explode('.', $permission)[0], $tenantModuleKeys))
+            ->values()
+            ->all();
 
         $data = $request->validate([
             'permissions' => ['present', 'array'],

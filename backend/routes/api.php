@@ -172,7 +172,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/tenants/{tenant}/barcode-settings', [AdminBarcodeSettingController::class, 'index']);
         Route::put('/tenants/{tenant}/barcode-settings', [AdminBarcodeSettingController::class, 'update']);
 
-        Route::get('/permissions/catalog', [AdminRolePermissionController::class, 'catalog']);
+        Route::get('/tenants/{tenant}/permissions/catalog', [AdminRolePermissionController::class, 'catalog']);
         Route::get('/tenants/{tenant}/roles', [AdminRolePermissionController::class, 'index']);
         Route::put('/tenants/{tenant}/roles/{role}', [AdminRolePermissionController::class, 'update']);
         Route::delete('/tenants/{tenant}/roles/{role}', [AdminRolePermissionController::class, 'reset']);
