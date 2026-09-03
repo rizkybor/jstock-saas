@@ -5,22 +5,23 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\TenantRolePermission;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class RolePermissionController extends Controller
 {
-    /** Tenant-level roles a Super Admin can customize — super_admin itself never is. */
-    private const ROLES = ['owner', 'manager', 'operator', 'viewer'];
-
     /**
-     * Every permission string that exists on any tenant role, grouped by
-     * module (the part before the first dot) — what the checklist UI renders.
+     * Every permission string the platform knows about (the 4 preset role
+     * matrices in config/permissions.php cover the full set), grouped by
+     * module (the part before the first dot) — what the checklist UI renders
+     * regardless of which roles a given tenant actually uses.
      */
     public function catalog()
     {
-        $all = collect(self::ROLES)
-            ->flatMap(fn ($role) => config("permissions.{$role}", []))
+        $all = collect(config('permissions'))
+            ->except('super_admin')
+            ->flatten()
             ->unique()
             ->sort()
             ->values();
@@ -38,12 +39,22 @@ class RolePermissionController extends Controller
     }
 
     /**
-     * Effective permission set per role for this tenant — custom override
-     * if Super Admin has set one, otherwise the platform default.
+     * Effective permission set per role actually in use by this tenant's
+     * accounts — every tenant is free to only use "Owner", or add its own
+     * job titles, so the role list is derived from its users, not a fixed
+     * platform-wide set. Custom override wins if Super Admin has set one,
+     * otherwise the platform default for that role name (empty for a role
+     * name the platform doesn't preset).
      */
     public function index(Tenant $tenant)
     {
-        $roles = collect(self::ROLES)->map(function ($role) use ($tenant) {
+        $activeRoles = User::where('tenant_id', $tenant->id)
+            ->whereNotNull('role')
+            ->distinct()
+            ->orderBy('role')
+            ->pluck('role');
+
+        $roles = $activeRoles->map(function ($role) use ($tenant) {
             $custom = TenantRolePermission::where('tenant_id', $tenant->id)
                 ->where('role', $role)
                 ->pluck('permission');
@@ -57,16 +68,25 @@ class RolePermissionController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $roles,
+            'data' => $roles->values(),
             'message' => null,
         ]);
     }
 
+    private function assertActiveRole(Tenant $tenant, string $role): void
+    {
+        abort_unless(
+            User::where('tenant_id', $tenant->id)->where('role', $role)->exists(),
+            404,
+            "Role \"{$role}\" tidak digunakan oleh akun manapun di tenant ini."
+        );
+    }
+
     public function update(Request $request, Tenant $tenant, string $role)
     {
-        abort_unless(in_array($role, self::ROLES, true), 404);
+        $this->assertActiveRole($tenant, $role);
 
-        $validCatalog = collect(self::ROLES)->flatMap(fn ($r) => config("permissions.{$r}", []))->unique()->values()->all();
+        $validCatalog = collect(config('permissions'))->except('super_admin')->flatten()->unique()->values()->all();
 
         $data = $request->validate([
             'permissions' => ['present', 'array'],
@@ -99,7 +119,7 @@ class RolePermissionController extends Controller
 
     public function reset(Tenant $tenant, string $role)
     {
-        abort_unless(in_array($role, self::ROLES, true), 404);
+        $this->assertActiveRole($tenant, $role);
 
         TenantRolePermission::where('tenant_id', $tenant->id)->where('role', $role)->delete();
 

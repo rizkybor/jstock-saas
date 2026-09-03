@@ -37,18 +37,37 @@ class RolePermissionTest extends TestCase
         ]);
     }
 
-    public function test_tenant_roles_default_to_the_platform_matrix(): void
+    public function test_role_list_only_includes_roles_actually_used_by_the_tenants_accounts(): void
     {
         $admin = $this->makeSuperAdmin();
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->makeUser($tenant, 'owner');
 
         $response = $this->actingAs($admin, 'sanctum')
             ->getJson("/api/admin/tenants/{$tenant->token}/roles")
             ->assertOk();
 
-        $viewer = collect($response->json('data'))->firstWhere('role', 'viewer');
-        $this->assertFalse($viewer['is_custom']);
-        $this->assertNotContains('clients.delete', $viewer['permissions']);
+        $roles = collect($response->json('data'))->pluck('role');
+        $this->assertEquals(['owner'], $roles->all());
+
+        $owner = collect($response->json('data'))->firstWhere('role', 'owner');
+        $this->assertFalse($owner['is_custom']);
+        $this->assertContains('clients.delete', $owner['permissions']);
+    }
+
+    public function test_a_custom_job_title_role_starts_with_no_permissions_until_super_admin_grants_some(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->makeUser($tenant, 'supervisor_gudang');
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->getJson("/api/admin/tenants/{$tenant->token}/roles")
+            ->assertOk();
+
+        $role = collect($response->json('data'))->firstWhere('role', 'supervisor_gudang');
+        $this->assertFalse($role['is_custom']);
+        $this->assertSame([], $role['permissions']);
     }
 
     public function test_super_admin_can_grant_extra_permission_and_it_takes_effect_immediately(): void
@@ -98,6 +117,17 @@ class RolePermissionTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_cannot_manage_a_role_no_account_in_the_tenant_actually_uses(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->makeUser($tenant, 'owner');
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/admin/tenants/{$tenant->token}/roles/viewer", ['permissions' => []])
+            ->assertStatus(404);
+    }
+
     public function test_only_super_admin_can_manage_roles(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
@@ -108,7 +138,7 @@ class RolePermissionTest extends TestCase
             ->assertStatus(403);
 
         $this->actingAs($owner, 'sanctum')
-            ->putJson("/api/admin/tenants/{$tenant->token}/roles/viewer", ['permissions' => []])
+            ->putJson("/api/admin/tenants/{$tenant->token}/roles/owner", ['permissions' => []])
             ->assertStatus(403);
     }
 

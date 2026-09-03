@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\ModuleController as AdminModuleController;
 use App\Http\Controllers\Api\Admin\RolePermissionController as AdminRolePermissionController;
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
+use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DashboardController;
@@ -73,6 +74,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/modules', [AdminModuleController::class, 'index']);
         Route::post('/modules', [AdminModuleController::class, 'store']);
+
+        Route::get('/tenants/{tenant}/users', [AdminUserController::class, 'index']);
+        Route::post('/tenants/{tenant}/users', [AdminUserController::class, 'store']);
+        Route::put('/tenants/{tenant}/users/{user}', [AdminUserController::class, 'update']);
+        Route::delete('/tenants/{tenant}/users/{user}', [AdminUserController::class, 'destroy']);
 
         Route::get('/permissions/catalog', [AdminRolePermissionController::class, 'catalog']);
         Route::get('/tenants/{tenant}/roles', [AdminRolePermissionController::class, 'index']);
