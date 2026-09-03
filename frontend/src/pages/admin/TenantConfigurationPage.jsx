@@ -9,7 +9,15 @@ const PROFILE_RULES = [{ name: "name", label: "Nama Perusahaan", required: true 
 const TABS = [
   { key: "profile", label: "Profil" },
   { key: "modules", label: "Modul" },
+  { key: "roles", label: "Roles & Permission" },
 ];
+
+const ROLE_LABELS = {
+  owner: "Owner",
+  manager: "Manager",
+  operator: "Operator",
+  viewer: "Viewer",
+};
 
 export default function TenantConfigurationPage() {
   const { tenantToken } = useParams();
@@ -27,6 +35,16 @@ export default function TenantConfigurationPage() {
   const [modulesLoading, setModulesLoading] = useState(true);
   const [moduleBusyId, setModuleBusyId] = useState(null);
   const [moduleError, setModuleError] = useState(null);
+
+  const [permissionCatalog, setPermissionCatalog] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [roleError, setRoleError] = useState(null);
+  const [selectedRole, setSelectedRole] = useState("owner");
+  const [draftPermissions, setDraftPermissions] = useState([]);
+  const [savingRole, setSavingRole] = useState(false);
+  const [resettingRole, setResettingRole] = useState(false);
+  const [roleMessage, setRoleMessage] = useState(null);
 
   const loadTenant = async () => {
     setLoading(true);
@@ -60,11 +78,35 @@ export default function TenantConfigurationPage() {
     }
   };
 
+  const loadRoles = async () => {
+    setRolesLoading(true);
+    setRoleError(null);
+    try {
+      const [catalogRes, rolesRes] = await Promise.all([
+        apiClient.get("/admin/permissions/catalog"),
+        apiClient.get(`/admin/tenants/${tenantToken}/roles`),
+      ]);
+      setPermissionCatalog(catalogRes.data.data);
+      setRoles(rolesRes.data.data);
+    } catch {
+      setRoleError("Gagal memuat Roles & Permission tenant ini.");
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadTenant();
     loadModules();
+    loadRoles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantToken]);
+
+  useEffect(() => {
+    const current = roles.find((r) => r.role === selectedRole);
+    setDraftPermissions(current ? [...current.permissions] : []);
+    setRoleMessage(null);
+  }, [selectedRole, roles]);
 
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
@@ -102,6 +144,45 @@ export default function TenantConfigurationPage() {
       setModuleBusyId(null);
     }
   };
+
+  const togglePermission = (permission) => {
+    setDraftPermissions((list) =>
+      list.includes(permission) ? list.filter((p) => p !== permission) : [...list, permission],
+    );
+  };
+
+  const saveRolePermissions = async () => {
+    setRoleError(null);
+    setRoleMessage(null);
+    setSavingRole(true);
+    try {
+      await apiClient.put(`/admin/tenants/${tenantToken}/roles/${selectedRole}`, { permissions: draftPermissions });
+      await loadRoles();
+      setRoleMessage({ tone: "success", text: `Permission untuk role "${ROLE_LABELS[selectedRole]}" berhasil disimpan.` });
+    } catch (err) {
+      setRoleError(err.response?.data?.message ?? "Gagal menyimpan permission.");
+    } finally {
+      setSavingRole(false);
+    }
+  };
+
+  const resetRolePermissions = async () => {
+    if (!confirm(`Kembalikan role "${ROLE_LABELS[selectedRole]}" ke default platform?`)) return;
+    setRoleError(null);
+    setRoleMessage(null);
+    setResettingRole(true);
+    try {
+      await apiClient.delete(`/admin/tenants/${tenantToken}/roles/${selectedRole}`);
+      await loadRoles();
+      setRoleMessage({ tone: "success", text: `Role "${ROLE_LABELS[selectedRole]}" dikembalikan ke default platform.` });
+    } catch (err) {
+      setRoleError(err.response?.data?.message ?? "Gagal mereset permission.");
+    } finally {
+      setResettingRole(false);
+    }
+  };
+
+  const currentRole = roles.find((r) => r.role === selectedRole);
 
   return (
     <div>
@@ -208,6 +289,94 @@ export default function TenantConfigurationPage() {
                     </label>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {tab === "roles" && (
+            <div className="max-w-2xl">
+              <p className="mb-4 text-sm text-ink-muted">
+                Atur permission per role khusus untuk tenant ini. Role yang belum dikustomisasi mengikuti matriks default platform.
+              </p>
+
+              {roleError && (
+                <div className="mb-3">
+                  <Alert>{roleError}</Alert>
+                </div>
+              )}
+
+              {rolesLoading ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {roles.map((r) => (
+                      <button
+                        key={r.role}
+                        type="button"
+                        onClick={() => setSelectedRole(r.role)}
+                        className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                          selectedRole === r.role
+                            ? "border-primary bg-primary text-white"
+                            : "border-border bg-surface text-ink hover:bg-surface-2"
+                        }`}
+                      >
+                        {ROLE_LABELS[r.role] ?? r.role}
+                        {r.is_custom && (
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${selectedRole === r.role ? "bg-white" : "bg-primary"}`}
+                          />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {currentRole && (
+                    <div className="mb-3 text-xs text-ink-muted">
+                      {currentRole.is_custom ? "● Menggunakan permission kustom untuk tenant ini." : "Mengikuti default platform."}
+                    </div>
+                  )}
+
+                  {roleMessage && (
+                    <div className="mb-3">
+                      <Alert tone={roleMessage.tone}>{roleMessage.text}</Alert>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-4">
+                    {permissionCatalog.map((group) => (
+                      <div key={group.module} className="rounded-lg border border-border p-3">
+                        <div className="mb-2 text-sm font-semibold text-ink capitalize">{group.module}</div>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {group.permissions.map((permission) => (
+                            <label key={permission} className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                              <input
+                                type="checkbox"
+                                checked={draftPermissions.includes(permission)}
+                                onChange={() => togglePermission(permission)}
+                                className="h-4 w-4 cursor-pointer accent-primary"
+                              />
+                              {permission}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button onClick={saveRolePermissions} loading={savingRole}>
+                      {savingRole ? "Menyimpan..." : "Simpan"}
+                    </Button>
+                    <Button variant="secondary" onClick={resetRolePermissions} loading={resettingRole} disabled={!currentRole?.is_custom}>
+                      Reset ke Default
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
           )}

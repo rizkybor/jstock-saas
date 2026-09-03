@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination } from "../../components/ui";
+import { Alert, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
 
-const EMPTY_CREATE_FORM = { name: "", unit_cost: "", quantity: "", additional_cost: "" };
+const EMPTY_CREATE_FORM = {
+  name: "",
+  product_series_id: "",
+  lot_batch: "",
+  unique_id: "",
+  item_detail: "",
+  unit_cost: "",
+  quantity: "",
+  additional_cost: "",
+  input_date: "",
+};
 
 const CREATE_RULES = [
   { name: "name", label: "Nama Barang", required: true },
@@ -21,14 +31,20 @@ const EDIT_RULES = [
 ];
 
 const formatCurrency = (value) => `Rp ${value.toLocaleString("id-ID")}`;
+const formatDate = (value) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-");
 
 export default function ProductsPage() {
   const { can } = useAuth();
   const [products, setProducts] = useState([]);
+  const [series, setSeries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [deletingId, setDeletingId] = useState(null);
+
+  const [search, setSearch] = useState("");
+  const [seriesFilter, setSeriesFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
 
   const [formMode, setFormMode] = useState(null); // "create" | "edit" | null
   const [editingProduct, setEditingProduct] = useState(null);
@@ -41,7 +57,15 @@ export default function ProductsPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get("/products", { params: { page } });
+      const { data } = await apiClient.get("/products", {
+        params: {
+          page,
+          q: search || undefined,
+          product_series_id: seriesFilter || undefined,
+          date_from: dateFilter || undefined,
+          date_to: dateFilter || undefined,
+        },
+      });
       setProducts(data.data);
       setMeta(data.meta);
     } catch (err) {
@@ -51,9 +75,25 @@ export default function ProductsPage() {
     }
   };
 
+  const loadSeries = async () => {
+    try {
+      const { data } = await apiClient.get("/product-series");
+      setSeries(data.data);
+    } catch {
+      // Non-fatal: forms/filters just show no category options.
+    }
+  };
+
   useEffect(() => {
     loadProducts(1);
+    loadSeries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleFilterSubmit = (event) => {
+    event.preventDefault();
+    loadProducts(1);
+  };
 
   const openCreate = () => {
     setForm(EMPTY_CREATE_FORM);
@@ -64,7 +104,16 @@ export default function ProductsPage() {
 
   const openEdit = (product) => {
     setEditingProduct(product);
-    setForm({ name: product.name ?? "", unit_cost: product.unit_cost ?? "", stock_qty: product.stock_qty ?? "" });
+    setForm({
+      name: product.name ?? "",
+      product_series_id: product.product_series_id ?? "",
+      lot_batch: product.lot_batch ?? "",
+      unique_id: product.unique_id ?? "",
+      item_detail: product.item_detail ?? "",
+      unit_cost: product.unit_cost ?? "",
+      stock_qty: product.stock_qty ?? "",
+      input_date: product.input_date ?? "",
+    });
     setFieldErrors({});
     setFormError(null);
     setFormMode("edit");
@@ -116,6 +165,8 @@ export default function ProductsPage() {
   const columns = [
     { key: "name", header: "Nama Barang" },
     { key: "lot_batch", header: "LOT/Batch", render: (row) => <CodeChip>{row.lot_batch}</CodeChip> },
+    { key: "series", header: "Kategori", render: (row) => row.series?.name ?? "-" },
+    { key: "input_date", header: "Tgl Input", render: (row) => formatDate(row.input_date) },
     { key: "unit_cost", header: "Unit Cost", render: (row) => formatCurrency(row.unit_cost) },
     { key: "grand_total_cost", header: "Grand Total Cost", render: (row) => formatCurrency(row.grand_total_cost) },
     { key: "cogs", header: "COGS/unit", render: (row) => formatCurrency(row.cogs) },
@@ -161,6 +212,28 @@ export default function ProductsPage() {
         </div>
       )}
 
+      <form onSubmit={handleFilterSubmit} className="mb-4 flex flex-wrap gap-3">
+        <Input
+          type="search"
+          placeholder="Cari nama barang / LOT..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="min-w-56 flex-1"
+        />
+        <Select value={seriesFilter} onChange={(e) => setSeriesFilter(e.target.value)}>
+          <option value="">Semua Kategori</option>
+          {series.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
+        <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+        <Button type="submit" variant="secondary">
+          Filter
+        </Button>
+      </form>
+
       <DataTable
         columns={columns}
         rows={products}
@@ -180,24 +253,72 @@ export default function ProductsPage() {
 
       {formMode && (
         <Modal
-          title={formMode === "create" ? "Tambah Barang Baru" : `Edit Barang — ${editingProduct?.name}`}
-          description={
-            formMode === "create"
-              ? "LOT/Batch dan COGS dihitung otomatis oleh sistem."
-              : `LOT/Batch: ${editingProduct?.lot_batch ?? "-"} (tidak bisa diubah)`
-          }
+          title={formMode === "create" ? "Tambah Barang" : `Edit Barang — ${editingProduct?.name}`}
+          description="LOT/Batch bisa diisi manual atau dikosongkan untuk digenerate otomatis oleh sistem. Grand Total Cost & COGS dihitung otomatis."
           onClose={closeForm}
+          width="640px"
         >
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
             <Input
               label="Nama Barang"
               name="name"
-              placeholder="mis. 8AL 25PPM H2S/100PPM CO"
+              placeholder="mis. 8AL 25PPM H2S/100PPM CO/2.5%CH4/18%O2/N2"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               error={fieldErrors.name}
               required
             />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select
+                label="Kategori / Product Series"
+                name="product_series_id"
+                value={form.product_series_id}
+                onChange={(e) => setForm({ ...form, product_series_id: e.target.value })}
+              >
+                <option value="">Tanpa kategori</option>
+                {series.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                label="Tanggal Input"
+                name="input_date"
+                type="date"
+                value={form.input_date}
+                onChange={(e) => setForm({ ...form, input_date: e.target.value })}
+                hint={formMode === "create" ? "Kosongkan untuk hari ini" : undefined}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="LOT / Batch Number"
+                name="lot_batch"
+                placeholder="LOT-..."
+                hint={formMode === "create" ? "Kosongkan untuk generate otomatis" : undefined}
+                value={form.lot_batch}
+                onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
+              />
+              <Input
+                label="ID Unik Per Produk"
+                name="unique_id"
+                placeholder="BRG-..."
+                value={form.unique_id}
+                onChange={(e) => setForm({ ...form, unique_id: e.target.value })}
+              />
+            </div>
+
+            <Textarea
+              label="Item Detail"
+              name="item_detail"
+              placeholder="Deskripsi tabung, tekanan, sertifikat, dll."
+              value={form.item_detail}
+              onChange={(e) => setForm({ ...form, item_detail: e.target.value })}
+            />
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Unit Cost"
@@ -239,7 +360,7 @@ export default function ProductsPage() {
                 name="additional_cost"
                 type="number"
                 min="0"
-                hint="Opsional, mis. ongkos kirim"
+                hint="Opsional, mis. ongkos kirim — ditambahkan ke Grand Total Cost"
                 value={form.additional_cost}
                 onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
                 error={fieldErrors.additional_cost}
@@ -253,7 +374,7 @@ export default function ProductsPage() {
                 Batal
               </Button>
               <Button type="submit" loading={submitting}>
-                {submitting ? "Menyimpan..." : formMode === "create" ? "Tambah Barang" : "Simpan Perubahan"}
+                {submitting ? "Menyimpan..." : formMode === "create" ? "Simpan Barang" : "Simpan Perubahan"}
               </Button>
             </div>
           </form>

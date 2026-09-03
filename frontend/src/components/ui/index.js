@@ -13,4 +13,5 @@ export { default as Select } from "./Select";
 export { default as Skeleton } from "./Skeleton";
 export { default as StatTile } from "./StatTile";
 export { default as Tabs } from "./Tabs";
+export { default as Textarea } from "./Textarea";
 export { default as GearIcon } from "./icons/GearIcon";
