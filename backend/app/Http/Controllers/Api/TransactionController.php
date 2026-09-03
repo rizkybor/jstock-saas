@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Resources\TransactionResource;
 use App\Models\ApprovalStep;
+use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Recipient;
 use App\Models\Sender;
 use App\Models\Transaction;
 use App\Models\TransactionApproval;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -56,13 +58,38 @@ class TransactionController extends Controller
         $tenant = $request->user()->tenant;
 
         $transaction = DB::transaction(function () use ($data, $tenant) {
-            $senderId = $data['sender_id'] ?? Sender::create(['name' => $data['sender_name']])->id;
+            if (! empty($data['sender_id'])) {
+                $senderId = $data['sender_id'];
+            } elseif (! empty($data['sender_user_id'])) {
+                // Reuse one Sender row per staff account instead of creating
+                // a new one every time the same person is picked.
+                $user = User::find($data['sender_user_id']);
+                $senderId = Sender::firstOrCreate(['user_id' => $user->id], ['name' => $user->name])->id;
+            } else {
+                $senderId = Sender::create(['name' => $data['sender_name']])->id;
+            }
 
-            $recipientId = $data['recipient_id'] ?? Recipient::create([
-                'name' => $data['recipient_name'],
-                'position' => $data['recipient_position'] ?? null,
-                'company' => $data['recipient_company'] ?? null,
-            ])->id;
+            if (! empty($data['recipient_id'])) {
+                $recipientId = $data['recipient_id'];
+            } elseif (! empty($data['client_id'])) {
+                // Reuse/refresh one Recipient row per client instead of
+                // creating a new one every time the same client is picked.
+                $client = Client::find($data['client_id']);
+                $recipientId = Recipient::updateOrCreate(
+                    ['client_id' => $client->id],
+                    [
+                        'name' => $client->pic_name,
+                        'position' => $data['recipient_position'] ?? null,
+                        'company' => $data['recipient_company'] ?? $client->company_name,
+                    ],
+                )->id;
+            } else {
+                $recipientId = Recipient::create([
+                    'name' => $data['recipient_name'],
+                    'position' => $data['recipient_position'] ?? null,
+                    'company' => $data['recipient_company'] ?? null,
+                ])->id;
+            }
 
             $products = Product::whereIn('id', collect($data['items'])->pluck('product_id'))
                 ->get()

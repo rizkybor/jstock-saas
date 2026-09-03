@@ -20,11 +20,12 @@ class StoreTransactionRequest extends FormRequest
         return [
             'client_id' => ['nullable', Rule::exists('clients', 'id')->where('tenant_id', tenant_id())],
 
-            'sender_id' => ['nullable', 'required_without:sender_name', Rule::exists('senders', 'id')->where('tenant_id', tenant_id())],
-            'sender_name' => ['nullable', 'required_without:sender_id', 'string', 'max:255'],
+            'sender_id' => ['nullable', 'required_without_all:sender_name,sender_user_id', Rule::exists('senders', 'id')->where('tenant_id', tenant_id())],
+            'sender_name' => ['nullable', 'required_without_all:sender_id,sender_user_id', 'string', 'max:255'],
+            'sender_user_id' => ['nullable', 'required_without_all:sender_id,sender_name', Rule::exists('users', 'id')->where('tenant_id', tenant_id())],
 
-            'recipient_id' => ['nullable', 'required_without:recipient_name', Rule::exists('recipients', 'id')->where('tenant_id', tenant_id())],
-            'recipient_name' => ['nullable', 'required_without:recipient_id', 'string', 'max:255'],
+            'recipient_id' => ['nullable', 'required_without_all:recipient_name,client_id', Rule::exists('recipients', 'id')->where('tenant_id', tenant_id())],
+            'recipient_name' => ['nullable', 'required_without_all:recipient_id,client_id', 'string', 'max:255'],
             'recipient_position' => ['nullable', 'string', 'max:255'],
             'recipient_company' => ['nullable', 'string', 'max:255'],
 

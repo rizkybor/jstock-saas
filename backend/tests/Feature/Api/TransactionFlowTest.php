@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Client;
 use App\Models\Product;
+use App\Models\Recipient;
+use App\Models\Sender;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -173,6 +176,57 @@ class TransactionFlowTest extends TestCase
             'recipient_name' => 'Andi',
             'items' => [['product_id' => $productB->id, 'qty' => 1]],
         ])->assertJsonPath('data.trx_number', 'TRX-0001');
+    }
+
+    public function test_picking_a_tenant_user_as_sender_reuses_one_sender_row_across_transactions(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $staff = $this->makeUser($tenant, 'operator');
+        $product = $this->makeProduct($tenant, 20);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_user_id' => $staff->id,
+            'recipient_name' => 'Andi',
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->assertJsonPath('data.sender.name', $staff->name);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_user_id' => $staff->id,
+            'recipient_name' => 'Budi',
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->assertJsonPath('data.sender.name', $staff->name);
+
+        $this->assertSame(1, Sender::where('tenant_id', $tenant->id)->where('user_id', $staff->id)->count());
+    }
+
+    public function test_picking_a_client_as_recipient_reuses_and_refreshes_one_recipient_row(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 20);
+        $client = Client::create(['tenant_id' => $tenant->id, 'company_name' => 'PT Contoh', 'pic_name' => 'Andi Wijaya']);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'client_id' => $client->id,
+            'recipient_position' => 'QA Manager',
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()
+            ->assertJsonPath('data.recipient.name', 'Andi Wijaya')
+            ->assertJsonPath('data.recipient.company', 'PT Contoh')
+            ->assertJsonPath('data.recipient.position', 'QA Manager');
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'client_id' => $client->id,
+            'recipient_position' => 'Teknisi',
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->assertJsonPath('data.recipient.position', 'Teknisi');
+
+        $this->assertSame(1, Recipient::where('tenant_id', $tenant->id)->where('client_id', $client->id)->count());
     }
 
     public function test_users_endpoint_lists_only_this_tenants_active_accounts_for_the_pengirim_dropdown(): void
