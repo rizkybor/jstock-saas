@@ -46,6 +46,34 @@ class ProductFlowTest extends TestCase
             ->assertJsonPath('data.series.name', 'CH4 — 2.5%');
     }
 
+    public function test_additional_cost_is_included_in_grand_total_and_persists_across_edits(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeOwner($tenant);
+        $series = ProductSeries::create(['tenant_id' => $tenant->id, 'name' => 'CH4 — 2.5%']);
+
+        $productId = $this->actingAs($owner, 'sanctum')->postJson('/api/products', [
+            'name' => 'Gas Kalibrasi CH4 2.5%',
+            'product_series_id' => $series->id,
+            'unit_cost' => 100000,
+            'quantity' => 10,
+            'additional_cost' => 50000,
+        ])->assertCreated()
+            ->assertJsonPath('data.additional_cost', 50000)
+            ->assertJsonPath('data.grand_total_cost', 1050000) // (100000*10)+50000
+            ->assertJsonPath('data.cogs', 105000) // 1050000/10
+            ->json('data.id');
+
+        // Editing quantity alone (no unit_cost re-sent) must keep the
+        // additional_cost baked into the recalculation, not silently drop it.
+        $this->actingAs($owner, 'sanctum')
+            ->putJson("/api/products/{$productId}", ['stock_qty' => 5])
+            ->assertOk()
+            ->assertJsonPath('data.grand_total_cost', 550000) // (100000*5)+50000
+            ->assertJsonPath('data.additional_cost', 50000);
+    }
+
     public function test_unit_cost_is_required_to_create_a_product(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);

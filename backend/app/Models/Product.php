@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'tenant_id', 'product_series_id', 'name', 'lot_batch', 'unique_id', 'item_detail',
-    'unit_cost', 'grand_total_cost', 'cogs', 'stock_qty', 'input_date',
+    'unit_cost', 'additional_cost', 'grand_total_cost', 'cogs', 'stock_qty', 'input_date',
 ])]
 class Product extends Model
 {
@@ -22,6 +22,7 @@ class Product extends Model
     {
         return [
             'unit_cost' => 'decimal:2',
+            'additional_cost' => 'decimal:2',
             'grand_total_cost' => 'decimal:2',
             'cogs' => 'decimal:2',
             'input_date' => 'date',

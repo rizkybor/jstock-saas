@@ -54,6 +54,7 @@ class ProductController extends Controller
             'unique_id' => $data['unique_id'] ?? null,
             'item_detail' => $data['item_detail'] ?? null,
             'unit_cost' => $data['unit_cost'],
+            'additional_cost' => $data['additional_cost'] ?? 0,
             'grand_total_cost' => $grandTotalCost,
             'cogs' => $cogs,
             'stock_qty' => $data['quantity'],
@@ -80,9 +81,11 @@ class ProductController extends Controller
     {
         $data = $request->validated();
 
-        if (isset($data['unit_cost'])) {
+        if (isset($data['unit_cost']) || isset($data['stock_qty']) || isset($data['additional_cost'])) {
+            $unitCost = $data['unit_cost'] ?? $product->unit_cost;
             $qty = $data['stock_qty'] ?? $product->stock_qty ?: 1;
-            [$grandTotalCost, $cogs] = $this->calculateCost($data['unit_cost'], $qty, 0);
+            $additionalCost = $data['additional_cost'] ?? $product->additional_cost;
+            [$grandTotalCost, $cogs] = $this->calculateCost($unitCost, $qty, $additionalCost);
             $data['grand_total_cost'] = $grandTotalCost;
             $data['cogs'] = $cogs;
         }

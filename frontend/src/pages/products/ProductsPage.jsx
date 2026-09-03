@@ -14,6 +14,7 @@ const EMPTY_CREATE_FORM = {
   unique_id: "",
   item_detail: "",
   unit_cost: "",
+  additional_cost: "",
   quantity: "",
   input_date: "",
 };
@@ -120,6 +121,7 @@ export default function ProductsPage() {
       unique_id: product.unique_id ?? "",
       item_detail: product.item_detail ?? "",
       unit_cost: product.unit_cost ?? "",
+      additional_cost: product.additional_cost ?? "",
       stock_qty: product.stock_qty ?? "",
       input_date: product.input_date ?? "",
     });
@@ -147,7 +149,8 @@ export default function ProductsPage() {
 
   const previewUnitCost = Number(form.unit_cost || 0);
   const previewQty = Number((formMode === "create" ? form.quantity : form.stock_qty) || 0);
-  const previewGrandTotal = previewUnitCost * previewQty;
+  const previewAdditionalCost = Number(form.additional_cost || 0);
+  const previewGrandTotal = previewUnitCost * previewQty + previewAdditionalCost;
   const previewCogs = previewQty > 0 ? previewGrandTotal / previewQty : 0;
 
   const handleSubmit = async (event) => {
@@ -185,6 +188,7 @@ export default function ProductsPage() {
           unique_id: form.unique_id || undefined,
           item_detail: form.item_detail || undefined,
           unit_cost: form.unit_cost,
+          additional_cost: form.additional_cost || undefined,
           quantity: form.quantity,
           input_date: form.input_date || undefined,
         });
@@ -410,14 +414,25 @@ export default function ProductsPage() {
               />
             </div>
 
-            <Input
-              label="Tanggal Input"
-              name="input_date"
-              type="date"
-              value={form.input_date}
-              onChange={(e) => setForm({ ...form, input_date: e.target.value })}
-              hint="Kosongkan untuk hari ini"
-            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Biaya Tambahan"
+                name="additional_cost"
+                type="number"
+                min="0"
+                hint="Opsional, mis. ongkos kirim"
+                value={form.additional_cost}
+                onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
+              />
+              <Input
+                label="Tanggal Input"
+                name="input_date"
+                type="date"
+                value={form.input_date}
+                onChange={(e) => setForm({ ...form, input_date: e.target.value })}
+                hint="Kosongkan untuk hari ini"
+              />
+            </div>
 
             <div className="rounded-lg bg-surface-2 p-3">
               <div className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Kalkulasi Otomatis (Ilustratif)</div>
@@ -539,6 +554,16 @@ export default function ProductsPage() {
                 required
               />
             </div>
+
+            <Input
+              label="Biaya Tambahan"
+              name="additional_cost"
+              type="number"
+              min="0"
+              hint="Opsional, mis. ongkos kirim"
+              value={form.additional_cost}
+              onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
+            />
 
             <div className="rounded-lg bg-surface-2 p-3">
               <div className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Kalkulasi Otomatis (Ilustratif)</div>
