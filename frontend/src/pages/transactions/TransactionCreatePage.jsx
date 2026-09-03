@@ -6,9 +6,9 @@ import { Alert, Button, Card, CodeChip, Input, Select, Skeleton } from "../../co
 const EMPTY_FORM = {
   qty: "",
   senderMode: "existing",
-  sender_id: "",
+  sender_user_id: "",
   sender_name: "",
-  recipient_name: "",
+  client_id: "",
   recipient_position: "",
   recipient_company: "",
 };
@@ -22,7 +22,8 @@ export default function TransactionCreatePage() {
   const [loading, setLoading] = useState(true);
   const [trxNumber, setTrxNumber] = useState(null);
   const [products, setProducts] = useState([]);
-  const [senders, setSenders] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [clients, setClients] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -33,14 +34,16 @@ export default function TransactionCreatePage() {
     (async () => {
       setLoading(true);
       try {
-        const [nextRes, productsRes, sendersRes] = await Promise.all([
+        const [nextRes, productsRes, usersRes, clientsRes] = await Promise.all([
           apiClient.get("/transactions/next-number"),
           apiClient.get("/products", { params: { limit: 1000 } }),
-          apiClient.get("/senders"),
+          apiClient.get("/users"),
+          apiClient.get("/clients", { params: { limit: 1000 } }),
         ]);
         setTrxNumber(nextRes.data.data.trx_number);
         setProducts(productsRes.data.data);
-        setSenders(sendersRes.data.data);
+        setUsers(usersRes.data.data);
+        setClients(clientsRes.data.data);
       } catch (err) {
         setError(err.response?.data?.message ?? "Gagal memuat data.");
       } finally {
@@ -73,18 +76,18 @@ export default function TransactionCreatePage() {
     const errors = {};
     if (!matchedProduct) errors.product = "Barang tidak ditemukan — periksa ID Barang atau LOT/Batch.";
     if (!form.qty || Number(form.qty) < 1) errors.qty = "Qty wajib diisi.";
-    if (form.senderMode === "existing" && !form.sender_id) errors.sender = "Pilih pengirim.";
+    if (form.senderMode === "existing" && !form.sender_user_id) errors.sender = "Pilih pengirim.";
     if (form.senderMode === "new" && !form.sender_name.trim()) errors.sender = "Nama Pengirim wajib diisi.";
-    if (!form.recipient_name.trim()) errors.recipient_name = "Nama Penerima wajib diisi.";
+    if (!form.client_id) errors.client_id = "Pilih penerima.";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setSubmitting(true);
     try {
       await apiClient.post("/transactions", {
-        sender_id: form.senderMode === "existing" ? Number(form.sender_id) : undefined,
+        sender_user_id: form.senderMode === "existing" ? Number(form.sender_user_id) : undefined,
         sender_name: form.senderMode === "new" ? form.sender_name : undefined,
-        recipient_name: form.recipient_name,
+        client_id: Number(form.client_id),
         recipient_position: form.recipient_position || undefined,
         recipient_company: form.recipient_company || undefined,
         items: [{ product_id: matchedProduct.id, qty: Number(form.qty) }],
@@ -170,19 +173,19 @@ export default function TransactionCreatePage() {
               <div>
                 <Select
                   label="Pengirim"
-                  value={form.senderMode === "new" ? "__new__" : form.sender_id}
+                  value={form.senderMode === "new" ? "__new__" : form.sender_user_id}
                   onChange={(e) =>
                     e.target.value === "__new__"
-                      ? setForm({ ...form, senderMode: "new", sender_id: "" })
-                      : setForm({ ...form, senderMode: "existing", sender_id: e.target.value })
+                      ? setForm({ ...form, senderMode: "new", sender_user_id: "" })
+                      : setForm({ ...form, senderMode: "existing", sender_user_id: e.target.value })
                   }
                   error={fieldErrors.sender}
                   required
                 >
                   <option value="">Pilih pengirim</option>
-                  {senders.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
                     </option>
                   ))}
                   <option value="__new__">+ Pengirim baru</option>
@@ -197,14 +200,27 @@ export default function TransactionCreatePage() {
                 )}
               </div>
 
-              <Input
+              <Select
                 label="Nama Penerima"
-                placeholder="Nama lengkap"
-                value={form.recipient_name}
-                onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                error={fieldErrors.recipient_name}
+                value={form.client_id}
+                onChange={(e) => {
+                  const client = clients.find((c) => String(c.id) === e.target.value);
+                  setForm({
+                    ...form,
+                    client_id: e.target.value,
+                    recipient_company: client?.company_name ?? form.recipient_company,
+                  });
+                }}
+                error={fieldErrors.client_id}
                 required
-              />
+              >
+                <option value="">Pilih klien</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.pic_name} — {c.company_name}
+                  </option>
+                ))}
+              </Select>
               <Input
                 label="Jabatan"
                 placeholder="mis. QA Manager"
