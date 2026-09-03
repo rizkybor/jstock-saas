@@ -1,14 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, ConfirmDialog, DataTable, GearIcon, Input, Modal, PageHeader, Pagination, Select, StatTile } from "../../components/ui";
 import { hasErrors, validate } from "../../utils/validate";
+import { fetchProvinces } from "../../utils/wilayah";
 
 const EMPTY_TENANT_FORM = {
   name: "",
   email: "",
   phone: "",
   address: "",
+  province_id: "",
+  province_name: "",
+  regency_id: "",
+  regency_name: "",
+  district_id: "",
+  district_name: "",
+  village_id: "",
+  village_name: "",
   owner_name: "",
   owner_email: "",
   owner_password: "",
@@ -30,6 +40,7 @@ export default function AdminTenantsPage() {
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [catalogModules, setCatalogModules] = useState([]);
+  const [provinces, setProvinces] = useState([]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_TENANT_FORM);
@@ -86,6 +97,9 @@ export default function AdminTenantsPage() {
     loadTenants(1);
     loadStats();
     loadCatalogModules();
+    fetchProvinces()
+      .then(setProvinces)
+      .catch(() => setProvinces([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -282,12 +296,38 @@ export default function AdminTenantsPage() {
                 error={fieldErrors.phone}
               />
             </div>
-            <Input
-              label="Alamat"
-              name="address"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-            />
+            <div>
+              <span className="mb-1.5 block text-sm font-semibold text-ink">Alamat</span>
+              <AddressFieldset
+                showLabel={false}
+                value={{
+                  province_id: form.province_id,
+                  province_name: form.province_name,
+                  regency_id: form.regency_id,
+                  regency_name: form.regency_name,
+                  district_id: form.district_id,
+                  district_name: form.district_name,
+                  village_id: form.village_id,
+                  village_name: form.village_name,
+                  detail: form.address,
+                }}
+                provinces={provinces}
+                onChange={(next) =>
+                  setForm({
+                    ...form,
+                    province_id: next.province_id,
+                    province_name: next.province_name,
+                    regency_id: next.regency_id,
+                    regency_name: next.regency_name,
+                    district_id: next.district_id,
+                    district_name: next.district_name,
+                    village_id: next.village_id,
+                    village_name: next.village_name,
+                    address: next.detail,
+                  })
+                }
+              />
+            </div>
 
             <div className="border-t border-border pt-4">
               <p className="mb-3 text-sm font-semibold text-ink">Akun Owner</p>
