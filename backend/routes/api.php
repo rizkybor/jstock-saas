@@ -4,9 +4,11 @@ use App\Http\Controllers\Api\Admin\ModuleController as AdminModuleController;
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductSeriesController;
 use App\Http\Controllers\Api\RecipientController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SenderController;
 use App\Http\Controllers\Api\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +26,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // future modules (different business processes) get their own prefix
     // and their own module:<key> gate here, side by side with this one.
     Route::middleware('module:inventory-gas-kalibrasi')->group(function () {
+        Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('permission:dashboard.view');
+        Route::get('/reports/summary', [ReportController::class, 'summary'])->middleware('permission:reports.view');
+
         Route::get('/clients', [ClientController::class, 'index'])->middleware('permission:clients.view');
         Route::post('/clients', [ClientController::class, 'store'])->middleware('permission:clients.create');
         Route::get('/clients/{client}', [ClientController::class, 'show'])->middleware('permission:clients.view');
