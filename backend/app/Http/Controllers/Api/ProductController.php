@@ -7,8 +7,10 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Models\ProductSeries;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -45,15 +47,23 @@ class ProductController extends Controller
     {
         $data = $request->validated();
 
-        [$grandTotalCost, $cogs] = $this->calculateCost($data['unit_cost'], $data['quantity'], $data['additional_cost'] ?? 0);
+        $series = ProductSeries::findOrFail($data['product_series_id']);
+
+        if ($series->unit_cost === null) {
+            throw ValidationException::withMessages([
+                'product_series_id' => ["Jenis Gas \"{$series->name}\" belum punya Unit Cost — set dulu harganya sebelum dipakai."],
+            ]);
+        }
+
+        [$grandTotalCost, $cogs] = $this->calculateCost((float) $series->unit_cost, $data['quantity'], $data['additional_cost'] ?? 0);
 
         $product = Product::create([
             'name' => $data['name'],
-            'product_series_id' => $data['product_series_id'] ?? null,
+            'product_series_id' => $series->id,
             'lot_batch' => $data['lot_batch'] ?? $this->generateLotBatch(),
             'unique_id' => $data['unique_id'] ?? null,
             'item_detail' => $data['item_detail'] ?? null,
-            'unit_cost' => $data['unit_cost'],
+            'unit_cost' => $series->unit_cost,
             'grand_total_cost' => $grandTotalCost,
             'cogs' => $cogs,
             'stock_qty' => $data['quantity'],

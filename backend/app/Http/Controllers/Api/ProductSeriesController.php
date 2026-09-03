@@ -23,6 +23,7 @@ class ProductSeriesController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:500'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $series = ProductSeries::create($data);

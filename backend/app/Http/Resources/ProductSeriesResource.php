@@ -16,6 +16,7 @@ class ProductSeriesResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
+            'unit_cost' => $this->unit_cost !== null ? (float) $this->unit_cost : null,
         ];
     }
 }
