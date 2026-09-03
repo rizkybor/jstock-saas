@@ -4,6 +4,7 @@ import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, transactionScanUrl } from "../../utils/barcode";
+import { downloadTransactionReceipt } from "../../utils/receipt";
 
 export default function TransactionsPage() {
   const { can, user } = useAuth();
@@ -25,6 +26,8 @@ export default function TransactionsPage() {
   const [rejectionNote, setRejectionNote] = useState("");
   const [actionType, setActionType] = useState(null);
   const [acting, setActing] = useState(false);
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState(null);
 
   const loadTransactions = async (page = 1) => {
     setLoading(true);
@@ -68,6 +71,18 @@ export default function TransactionsPage() {
   };
 
   const closeDetail = () => setSelected(null);
+
+  const handleDownloadReceipt = async () => {
+    setReceiptError(null);
+    setDownloadingReceipt(true);
+    try {
+      await downloadTransactionReceipt(selected, { tenantId, tenantName: user?.tenant_name });
+    } catch {
+      setReceiptError("Gagal mengunduh resi.");
+    } finally {
+      setDownloadingReceipt(false);
+    }
+  };
 
   // Handheld scanners act like a keyboard, typing the barcode's raw value
   // (trx_number) into whichever field has focus, then pressing Enter — this
@@ -294,24 +309,38 @@ export default function TransactionsPage() {
                 </div>
               </div>
 
-              {selected.barcode_type && (
+              {(selected.barcode_type || selected.status === "approved") && (
                 <div className="rounded-lg border border-border bg-surface-2 p-3">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                    Barcode — {barcodeTypeLabel(selected.barcode_type)}
-                  </div>
-                  <img
-                    src={barcodeImageUrl(
-                      selected.barcode_type,
-                      barcodePayload(
-                        selected.barcode_type,
-                        selected.trx_number,
-                        transactionScanUrl(tenantId, selected.trx_number),
-                        selected.id,
-                      ),
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                      {selected.barcode_type ? `Barcode — ${barcodeTypeLabel(selected.barcode_type)}` : "Dokumen Transaksi"}
+                    </div>
+                    {selected.status === "approved" && (
+                      <Button type="button" variant="secondary" size="sm" loading={downloadingReceipt} onClick={handleDownloadReceipt}>
+                        Download Resi
+                      </Button>
                     )}
-                    alt="Barcode"
-                    className="h-20 rounded bg-white p-2"
-                  />
+                  </div>
+
+                  {selected.barcode_type && (
+                    <img
+                      src={barcodeImageUrl(
+                        selected.barcode_type,
+                        barcodePayload(
+                          selected.barcode_type,
+                          selected.trx_number,
+                          transactionScanUrl(tenantId, selected.trx_number),
+                          selected.id,
+                        ),
+                      )}
+                      alt="Barcode"
+                      className="h-14 rounded bg-white p-1.5"
+                    />
+                  )}
+
+                  {receiptError && (
+                    <p className="mt-2 text-xs text-danger">{receiptError}</p>
+                  )}
                 </div>
               )}
 
