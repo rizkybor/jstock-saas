@@ -1,11 +1,26 @@
 import { useEffect, useState } from "react";
+import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
+import { fetchProvinces } from "../../utils/wilayah";
 
-const EMPTY_FORM = { company_name: "", pic_name: "", pic_position: "", phone: "", email: "" };
+const EMPTY_ADDRESS = {
+  label: "",
+  province_id: "",
+  province_name: "",
+  regency_id: "",
+  regency_name: "",
+  district_id: "",
+  district_name: "",
+  village_id: "",
+  village_name: "",
+  detail: "",
+};
+
+const EMPTY_FORM = { company_name: "", pic_name: "", pic_position: "", phone: "", email: "", addresses: [] };
 
 const VALIDATION_RULES = [
   { name: "company_name", label: "Nama Perusahaan", required: true },
@@ -32,6 +47,7 @@ export default function ClientsPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [provinces, setProvinces] = useState([]);
 
   const loadClients = async (page = 1) => {
     setLoading(true);
@@ -51,6 +67,9 @@ export default function ClientsPage() {
 
   useEffect(() => {
     loadClients(1);
+    fetchProvinces()
+      .then(setProvinces)
+      .catch(() => setProvinces([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -66,18 +85,28 @@ export default function ClientsPage() {
     setFormMode("create");
   };
 
-  const openEdit = (client) => {
+  const openEdit = async (client) => {
     setEditingClient(client);
+    setFieldErrors({});
+    setFormError(null);
+    setFormMode("edit");
     setForm({
       company_name: client.company_name ?? "",
       pic_name: client.pic_name ?? "",
       pic_position: client.pic_position ?? "",
       phone: client.phone ?? "",
       email: client.email ?? "",
+      addresses: [],
     });
-    setFieldErrors({});
-    setFormError(null);
-    setFormMode("edit");
+
+    // The list row only carries addresses_count — fetch the full record so
+    // editing doesn't wipe out addresses that aren't in the row payload.
+    try {
+      const { data } = await apiClient.get(`/clients/${client.id}`);
+      setForm((f) => ({ ...f, addresses: (data.data.addresses ?? []).map((a) => ({ ...EMPTY_ADDRESS, ...a })) }));
+    } catch {
+      setFormError("Gagal memuat alamat klien.");
+    }
   };
 
   const closeForm = () => {
@@ -90,6 +119,9 @@ export default function ClientsPage() {
     setFormError(null);
 
     const errors = validate(form, VALIDATION_RULES);
+    if (form.addresses.some((a) => !a.label.trim())) {
+      errors.addresses = "Setiap alamat harus punya label (mis. Rumah, Kantor).";
+    }
     setFieldErrors(errors);
     if (hasErrors(errors)) return;
 
@@ -134,6 +166,11 @@ export default function ClientsPage() {
     { key: "pic_name", header: "PIC", render: (row) => (row.pic_position ? `${row.pic_name} — ${row.pic_position}` : row.pic_name) },
     { key: "phone", header: "Telepon", render: (row) => row.phone ?? "-" },
     { key: "email", header: "Email", render: (row) => row.email ?? "-" },
+    {
+      key: "addresses_count",
+      header: "Alamat",
+      render: (row) => (row.addresses_count ? `${row.addresses_count} alamat` : "-"),
+    },
     {
       key: "status",
       header: "Status",
@@ -225,6 +262,7 @@ export default function ClientsPage() {
           title={formMode === "create" ? "Tambah Klien Baru" : `Edit Klien — ${editingClient?.company_name}`}
           description="Data perusahaan klien dan kontak PIC."
           onClose={closeForm}
+          width="640px"
         >
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
             <Input
@@ -269,6 +307,41 @@ export default function ClientsPage() {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 error={fieldErrors.email}
               />
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-semibold text-ink">Alamat</span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setForm({ ...form, addresses: [...form.addresses, { ...EMPTY_ADDRESS }] })}
+                >
+                  + Tambah Alamat
+                </Button>
+              </div>
+              {fieldErrors.addresses && <p className="mb-2 text-xs text-danger">{fieldErrors.addresses}</p>}
+              {form.addresses.length === 0 ? (
+                <p className="text-sm text-ink-muted">Belum ada alamat ditambahkan.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {form.addresses.map((address, index) => (
+                    <AddressFieldset
+                      key={index}
+                      value={address}
+                      provinces={provinces}
+                      onChange={(next) =>
+                        setForm({
+                          ...form,
+                          addresses: form.addresses.map((a, i) => (i === index ? next : a)),
+                        })
+                      }
+                      onRemove={() => setForm({ ...form, addresses: form.addresses.filter((_, i) => i !== index) })}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {formError && <Alert>{formError}</Alert>}
