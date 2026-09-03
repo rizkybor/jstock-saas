@@ -7,7 +7,6 @@ use App\Models\ProductSeries;
 use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Support\Gtin14;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\HasInventoryModule;
 use Tests\TestCase;
@@ -46,18 +45,6 @@ class PublicScanControllerTest extends TestCase
             ->assertJsonMissingPath('data.grand_total_cost')
             ->assertJsonMissingPath('data.cogs')
             ->assertJsonMissingPath('data.series.unit_cost');
-    }
-
-    public function test_a_product_can_be_looked_up_by_its_itf14_gtin_without_authentication(): void
-    {
-        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
-        $this->enableInventoryModule($tenant);
-        $product = $this->makeProduct($tenant);
-        $gtin = Gtin14::encode($product->id);
-
-        $this->getJson("/api/public/{$tenant->token}/products/scan/{$gtin}")
-            ->assertOk()
-            ->assertJsonPath('data.id', $product->id);
     }
 
     public function test_a_product_cannot_be_looked_up_through_another_tenants_token(): void

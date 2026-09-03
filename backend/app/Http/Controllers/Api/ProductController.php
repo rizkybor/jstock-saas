@@ -7,7 +7,6 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
-use App\Support\Gtin14;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -90,12 +89,7 @@ class ProductController extends Controller
      */
     public function lookup(string $uniqueId)
     {
-        // A scanned ITF-14 barcode carries a GTIN-14 derived from the id,
-        // not the unique_id — decode it back before falling through to a
-        // direct unique_id match (Code 128/39, or a manually typed value).
-        $product = ($id = Gtin14::decodeToId($uniqueId))
-            ? Product::with('series')->findOrFail($id)
-            : Product::where('unique_id', $uniqueId)->with('series')->firstOrFail();
+        $product = Product::where('unique_id', $uniqueId)->with('series')->firstOrFail();
 
         return response()->json([
             'success' => true,

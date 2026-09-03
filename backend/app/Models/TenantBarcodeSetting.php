@@ -12,13 +12,8 @@ class TenantBarcodeSetting extends Model
     /** The only two features that currently offer barcode autogeneration. */
     public const FEATURES = ['product', 'transaction'];
 
-    /**
-     * Canonical barcode type codes accepted by https://barcodeapi.org/.
-     * "itf14" (not "itf" — that silently renders a QR code instead) only
-     * accepts a valid checksummed GTIN-14, so its encoded value is always
-     * derived from the record's id — see App\Support\Gtin14.
-     */
-    public const TYPES = ['qr', '128', '39', 'itf14'];
+    /** Canonical barcode type codes accepted by https://barcodeapi.org/. */
+    public const TYPES = ['qr', '128', '39'];
 
     /**
      * Which of the above a tenant may pick from, per feature — a product

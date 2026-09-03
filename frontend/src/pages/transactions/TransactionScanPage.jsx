@@ -122,7 +122,6 @@ export default function TransactionScanPage() {
                     transaction.barcode_type,
                     transaction.trx_number,
                     transactionScanUrl(tenantId, transaction.trx_number),
-                    transaction.id,
                   ),
                 )}
                 alt="Barcode"

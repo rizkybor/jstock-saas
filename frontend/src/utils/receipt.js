@@ -165,7 +165,6 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
         transaction.barcode_type,
         transaction.trx_number,
         transactionScanUrl(tenantId, transaction.trx_number),
-        transaction.id,
       ),
       300,
     );

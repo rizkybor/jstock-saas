@@ -18,10 +18,6 @@ class PublicTransactionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            // Not sensitive on its own: an ITF-14 barcode is a deterministic,
-            // reversible encoding of this id (see App\Support\Gtin14), so a
-            // printed ITF-14 label already exposes it.
-            'id' => $this->id,
             'trx_number' => $this->trx_number,
             'barcode_type' => $this->barcode_type,
             'status' => $this->status,

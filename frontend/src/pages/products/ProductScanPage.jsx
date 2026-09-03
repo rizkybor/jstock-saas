@@ -87,7 +87,7 @@ export default function ProductScanPage() {
               <img
                 src={barcodeImageUrl(
                   product.barcode_type,
-                  barcodePayload(product.barcode_type, product.unique_id, productScanUrl(tenantId, product.unique_id), product.id),
+                  barcodePayload(product.barcode_type, product.unique_id, productScanUrl(tenantId, product.unique_id)),
                 )}
                 alt="Barcode"
                 className="h-20 rounded bg-white p-2"

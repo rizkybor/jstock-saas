@@ -148,7 +148,7 @@ export default function ProductsPage() {
   const barcodeUrlFor = (product) =>
     barcodeImageUrl(
       product.barcode_type,
-      barcodePayload(product.barcode_type, product.unique_id, productScanUrl(tenantId, product.unique_id), product.id),
+      barcodePayload(product.barcode_type, product.unique_id, productScanUrl(tenantId, product.unique_id)),
     );
 
   const handleDownloadLabel = async (product) => {
@@ -657,7 +657,6 @@ export default function ProductsPage() {
                         form.barcode_type,
                         form.unique_id,
                         productScanUrl(tenantId, form.unique_id),
-                        editingProduct?.id,
                       ),
                     )}
                     alt="Preview barcode"

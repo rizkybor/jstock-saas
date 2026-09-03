@@ -18,10 +18,6 @@ class PublicProductResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            // Not sensitive on its own: an ITF-14 barcode is a deterministic,
-            // reversible encoding of this id (see App\Support\Gtin14), so a
-            // printed ITF-14 label already exposes it.
-            'id' => $this->id,
             'name' => $this->name,
             'lot_batch' => $this->lot_batch,
             'unique_id' => $this->unique_id,

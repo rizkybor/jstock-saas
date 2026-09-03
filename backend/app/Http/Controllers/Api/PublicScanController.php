@@ -8,7 +8,6 @@ use App\Http\Resources\PublicTransactionResource;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\Transaction;
-use App\Support\Gtin14;
 
 /**
  * Unauthenticated landing endpoints for a scanned product/transaction QR
@@ -38,11 +37,11 @@ class PublicScanController extends Controller
     {
         $this->assertTenantActive($tenant);
 
-        $query = Product::withoutGlobalScopes()->where('tenant_id', $tenant->id);
-
-        $product = ($id = Gtin14::decodeToId($uniqueId))
-            ? $query->where('id', $id)->with('series')->firstOrFail()
-            : $query->where('unique_id', $uniqueId)->with('series')->firstOrFail();
+        $product = Product::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('unique_id', $uniqueId)
+            ->with('series')
+            ->firstOrFail();
 
         return response()->json([
             'success' => true,
@@ -55,12 +54,11 @@ class PublicScanController extends Controller
     {
         $this->assertTenantActive($tenant);
 
-        $withRelations = ['sender', 'recipient', 'recipientAddress', 'items.product', 'invoice'];
-        $query = Transaction::withoutGlobalScopes()->where('tenant_id', $tenant->id);
-
-        $transaction = ($id = Gtin14::decodeToId($trxNumber))
-            ? $query->where('id', $id)->with($withRelations)->firstOrFail()
-            : $query->where('trx_number', $trxNumber)->with($withRelations)->firstOrFail();
+        $transaction = Transaction::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('trx_number', $trxNumber)
+            ->with(['sender', 'recipient', 'recipientAddress', 'items.product', 'invoice'])
+            ->firstOrFail();
 
         if ($transaction->status === 'approved' && $transaction->shipping_status === 'unshipped') {
             $transaction->update(['shipping_status' => 'shipped']);
