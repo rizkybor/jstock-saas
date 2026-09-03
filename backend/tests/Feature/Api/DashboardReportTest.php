@@ -45,6 +45,7 @@ class DashboardReportTest extends TestCase
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
             'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
             'items' => [['product_id' => 1, 'qty' => 1]],
         ])->assertCreated();
 

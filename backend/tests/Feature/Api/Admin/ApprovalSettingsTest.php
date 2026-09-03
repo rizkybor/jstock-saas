@@ -95,6 +95,7 @@ class ApprovalSettingsTest extends TestCase
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
             'invoice_number' => 'INV-TEST-0001',
+            'address' => ['label' => 'Kantor'],
             'items' => [['product_id' => $product->id, 'qty' => 5]],
         ])->assertJsonPath('data.pending_approval.role', 'manager')
             ->json('data.id');
@@ -139,6 +140,7 @@ class ApprovalSettingsTest extends TestCase
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
             'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
             'items' => [['product_id' => $product->id, 'qty' => 5]],
         ])->assertCreated()
             ->assertJsonPath('data.status', 'approved');

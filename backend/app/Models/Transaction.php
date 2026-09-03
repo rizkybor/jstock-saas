@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
-    'tenant_id', 'trx_number', 'client_id', 'recipient_address_id', 'sender_id', 'recipient_id',
+    'tenant_id', 'trx_number', 'client_id', 'recipient_address_id', 'recipient_address_snapshot', 'sender_id', 'recipient_id',
     'status', 'current_approval_step_id', 'total', 'invoice_number', 'no_invoice',
     'approved_by', 'approved_at', 'rejection_note',
 ])]
@@ -26,6 +26,7 @@ class Transaction extends Model
         return [
             'total' => 'decimal:2',
             'no_invoice' => 'boolean',
+            'recipient_address_snapshot' => 'array',
             'approved_at' => 'datetime',
         ];
     }

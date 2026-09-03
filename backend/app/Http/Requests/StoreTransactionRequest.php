@@ -20,7 +20,10 @@ class StoreTransactionRequest extends FormRequest
         return [
             'client_id' => ['nullable', Rule::exists('clients', 'id')->where('tenant_id', tenant_id())],
             'address_id' => ['nullable', 'integer', Rule::exists('client_addresses', 'id')->where('client_id', $this->input('client_id'))],
-            'address' => ['nullable', 'array'],
+            'address' => [
+                'array',
+                Rule::requiredIf(fn () => empty($this->input('recipient_id')) && empty($this->input('address_id'))),
+            ],
             'address.label' => ['required_with:address', 'string', 'max:100'],
             'address.province_id' => ['nullable', 'string', 'max:10'],
             'address.province_name' => ['nullable', 'string', 'max:255'],

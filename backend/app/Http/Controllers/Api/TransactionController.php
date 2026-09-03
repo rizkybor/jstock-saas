@@ -92,6 +92,8 @@ class TransactionController extends Controller
                 ])->id;
             }
 
+            $recipientAddressSnapshot = null;
+
             if (! empty($data['address_id'])) {
                 $recipientAddressId = $data['address_id'];
             } elseif (! empty($data['address']) && ! empty($data['client_id'])) {
@@ -101,6 +103,11 @@ class TransactionController extends Controller
                     'client_id' => $data['client_id'],
                     ...$data['address'],
                 ])->id;
+            } elseif (! empty($data['address'])) {
+                // No client to attach it to (one-off recipient) — keep the
+                // address on this transaction only, not in any address book.
+                $recipientAddressId = null;
+                $recipientAddressSnapshot = $data['address'];
             } else {
                 $recipientAddressId = null;
             }
@@ -141,6 +148,7 @@ class TransactionController extends Controller
                 'trx_number' => $this->generateTrxNumber($tenant->id),
                 'client_id' => $data['client_id'] ?? null,
                 'recipient_address_id' => $recipientAddressId,
+                'recipient_address_snapshot' => $recipientAddressSnapshot,
                 'sender_id' => $senderId,
                 'recipient_id' => $recipientId,
                 'status' => 'pending',
