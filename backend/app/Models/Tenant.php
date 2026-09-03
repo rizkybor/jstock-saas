@@ -11,7 +11,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'slug', 'email', 'phone', 'address', 'logo_path', 'status', 'trial_ends_at', 'requires_approval'])]
+#[Fillable([
+    'name', 'slug', 'email', 'phone', 'address',
+    'province_id', 'province_name', 'regency_id', 'regency_name',
+    'district_id', 'district_name', 'village_id', 'village_name',
+    'logo_path', 'status', 'trial_ends_at', 'requires_approval',
+])]
 class Tenant extends Model
 {
     use HasFactory;

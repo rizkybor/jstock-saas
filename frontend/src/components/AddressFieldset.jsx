@@ -11,7 +11,7 @@ const selectClass =
  * Stateless-ish: parent owns the address value, this only owns the child
  * option lists it fetches as province/regency/district are picked.
  */
-export default function AddressFieldset({ value, provinces, onChange, onRemove }) {
+export default function AddressFieldset({ value, provinces, onChange, onRemove, showLabel = true }) {
   const [regencies, setRegencies] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [villages, setVillages] = useState([]);
@@ -92,20 +92,22 @@ export default function AddressFieldset({ value, provinces, onChange, onRemove }
 
   return (
     <div className="rounded-lg border border-border p-3">
-      <div className="mb-3 flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <Input
-            placeholder="Label (mis. Rumah, Kantor, Gudang)"
-            value={value.label}
-            onChange={(e) => onChange({ ...value, label: e.target.value })}
-          />
+      {showLabel && (
+        <div className="mb-3 flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <Input
+              placeholder="Label (mis. Rumah, Kantor, Gudang)"
+              value={value.label}
+              onChange={(e) => onChange({ ...value, label: e.target.value })}
+            />
+          </div>
+          {onRemove && (
+            <Button type="button" variant="danger" size="sm" onClick={onRemove}>
+              Hapus
+            </Button>
+          )}
         </div>
-        {onRemove && (
-          <Button type="button" variant="danger" size="sm" onClick={onRemove}>
-            Hapus
-          </Button>
-        )}
-      </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <select value={value.province_id || ""} onChange={handleProvinceChange} className={selectClass}>

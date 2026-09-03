@@ -1,15 +1,32 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Skeleton, Tabs } from "../../components/ui";
 import { BARCODE_TYPES } from "../../utils/barcode";
 import { hasErrors, validate } from "../../utils/validate";
+import { fetchProvinces } from "../../utils/wilayah";
 
 const PROFILE_RULES = [
   { name: "name", label: "Nama Perusahaan", required: true },
   { name: "email", label: "Email Perusahaan", type: "email" },
   { name: "phone", label: "Telepon", type: "phone" },
 ];
+
+const EMPTY_PROFILE_FORM = {
+  name: "",
+  email: "",
+  phone: "",
+  address: "",
+  province_id: "",
+  province_name: "",
+  regency_id: "",
+  regency_name: "",
+  district_id: "",
+  district_name: "",
+  village_id: "",
+  village_name: "",
+};
 
 const TABS = [
   { key: "profile", label: "Profil" },
@@ -63,10 +80,11 @@ export default function TenantConfigurationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [form, setForm] = useState(EMPTY_PROFILE_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState(null);
+  const [provinces, setProvinces] = useState([]);
 
   const [plans, setPlans] = useState([]);
   const [subscription, setSubscription] = useState(null);
@@ -133,6 +151,14 @@ export default function TenantConfigurationPage() {
         email: data.data.email ?? "",
         phone: data.data.phone ?? "",
         address: data.data.address ?? "",
+        province_id: data.data.province_id ?? "",
+        province_name: data.data.province_name ?? "",
+        regency_id: data.data.regency_id ?? "",
+        regency_name: data.data.regency_name ?? "",
+        district_id: data.data.district_id ?? "",
+        district_name: data.data.district_name ?? "",
+        village_id: data.data.village_id ?? "",
+        village_name: data.data.village_name ?? "",
       });
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal memuat data tenant.");
@@ -241,6 +267,9 @@ export default function TenantConfigurationPage() {
     loadApprovalSettings();
     loadPlanData();
     loadBarcodeSettings();
+    fetchProvinces()
+      .then(setProvinces)
+      .catch(() => setProvinces([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantToken]);
 
@@ -592,12 +621,38 @@ export default function TenantConfigurationPage() {
                   error={fieldErrors.phone}
                 />
               </div>
-              <Input
-                label="Alamat"
-                name="address"
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-              />
+              <div>
+                <span className="mb-1.5 block text-sm font-semibold text-ink">Alamat</span>
+                <AddressFieldset
+                  showLabel={false}
+                  value={{
+                    province_id: form.province_id,
+                    province_name: form.province_name,
+                    regency_id: form.regency_id,
+                    regency_name: form.regency_name,
+                    district_id: form.district_id,
+                    district_name: form.district_name,
+                    village_id: form.village_id,
+                    village_name: form.village_name,
+                    detail: form.address,
+                  }}
+                  provinces={provinces}
+                  onChange={(next) =>
+                    setForm({
+                      ...form,
+                      province_id: next.province_id,
+                      province_name: next.province_name,
+                      regency_id: next.regency_id,
+                      regency_name: next.regency_name,
+                      district_id: next.district_id,
+                      district_name: next.district_name,
+                      village_id: next.village_id,
+                      village_name: next.village_name,
+                      address: next.detail,
+                    })
+                  }
+                />
+              </div>
 
               {profileMessage && <Alert tone={profileMessage.tone}>{profileMessage.text}</Alert>}
 

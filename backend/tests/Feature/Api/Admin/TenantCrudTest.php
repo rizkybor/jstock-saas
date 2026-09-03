@@ -77,6 +77,31 @@ class TenantCrudTest extends TestCase
         $this->assertSame('Tenant Baru', $tenant->fresh()->name);
     }
 
+    public function test_super_admin_can_update_a_tenants_wilayah_address(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        $tenant = Tenant::create(['name' => 'Tenant Lama', 'slug' => 'tenant-lama', 'status' => 'trial']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/admin/tenants/{$tenant->token}", [
+                'address' => 'Jl. Contoh No. 1',
+                'province_id' => '31',
+                'province_name' => 'DKI Jakarta',
+                'regency_id' => '3171',
+                'regency_name' => 'Kota Jakarta Selatan',
+                'district_id' => '317101',
+                'district_name' => 'Kebayoran Baru',
+                'village_id' => '3171011001',
+                'village_name' => 'Selong',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.address', 'Jl. Contoh No. 1')
+            ->assertJsonPath('data.province_name', 'DKI Jakarta')
+            ->assertJsonPath('data.regency_name', 'Kota Jakarta Selatan')
+            ->assertJsonPath('data.district_name', 'Kebayoran Baru')
+            ->assertJsonPath('data.village_name', 'Selong');
+    }
+
     public function test_only_super_admin_can_create_or_update_tenants(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
