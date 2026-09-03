@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'tenant_id', 'trx_number', 'client_id', 'sender_id', 'recipient_id',
-    'status', 'current_approval_step_id', 'total', 'approved_by', 'approved_at', 'rejection_note',
+    'status', 'current_approval_step_id', 'total', 'invoice_number', 'no_invoice',
+    'approved_by', 'approved_at', 'rejection_note',
 ])]
 class Transaction extends Model
 {
@@ -24,6 +25,7 @@ class Transaction extends Model
     {
         return [
             'total' => 'decimal:2',
+            'no_invoice' => 'boolean',
             'approved_at' => 'datetime',
         ];
     }

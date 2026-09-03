@@ -131,6 +131,8 @@ class TransactionController extends Controller
                 'status' => 'pending',
                 'current_approval_step_id' => $firstStep?->id,
                 'total' => $total,
+                'invoice_number' => $data['no_invoice'] ?? false ? null : $data['invoice_number'],
+                'no_invoice' => $data['no_invoice'] ?? false,
             ]);
 
             $transaction->items()->createMany($items);
@@ -274,10 +276,13 @@ class TransactionController extends Controller
             'current_approval_step_id' => null,
         ]);
 
-        Invoice::create([
-            'transaction_id' => $transaction->id,
-            'invoice_number' => 'INV-'.now()->format('Y').'-'.str_pad((string) $transaction->id, 4, '0', STR_PAD_LEFT),
-        ]);
+        if (! $transaction->no_invoice) {
+            Invoice::create([
+                'transaction_id' => $transaction->id,
+                'invoice_number' => $transaction->invoice_number
+                    ?: 'INV-'.now()->format('Y').'-'.str_pad((string) $transaction->id, 4, '0', STR_PAD_LEFT),
+            ]);
+        }
     }
 
     /**

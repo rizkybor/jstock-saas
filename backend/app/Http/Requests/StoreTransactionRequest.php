@@ -29,6 +29,13 @@ class StoreTransactionRequest extends FormRequest
             'recipient_position' => ['nullable', 'string', 'max:255'],
             'recipient_company' => ['nullable', 'string', 'max:255'],
 
+            'no_invoice' => ['boolean'],
+            'invoice_number' => [
+                'nullable', 'string', 'max:100',
+                Rule::requiredIf(fn () => ! $this->boolean('no_invoice')),
+                Rule::unique('invoices', 'invoice_number')->where('tenant_id', tenant_id()),
+            ],
+
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', Rule::exists('products', 'id')->where('tenant_id', tenant_id())],
             'items.*.qty' => ['required', 'integer', 'min:1'],

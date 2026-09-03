@@ -17,6 +17,8 @@ class TransactionResource extends JsonResource
             'trx_number' => $this->trx_number,
             'status' => $this->status,
             'total' => (float) $this->total,
+            'invoice_number' => $this->invoice_number,
+            'no_invoice' => $this->no_invoice,
             'client' => $this->whenLoaded('client', fn () => $this->client?->only(['id', 'company_name', 'pic_name'])),
             'sender' => $this->whenLoaded('sender', fn () => $this->sender?->only(['id', 'name'])),
             'recipient' => $this->whenLoaded('recipient', fn () => $this->recipient?->only(['id', 'name', 'position', 'company'])),

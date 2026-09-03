@@ -53,6 +53,7 @@ class TransactionFlowTest extends TestCase
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
             'recipient_company' => 'PT Klien Satu',
+            'invoice_number' => 'INV-TEST-0001',
             'items' => [['product_id' => $product->id, 'qty' => 5]],
         ]);
 
@@ -91,6 +92,7 @@ class TransactionFlowTest extends TestCase
         $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
+            'no_invoice' => true,
             'items' => [['product_id' => $product->id, 'qty' => 10]],
         ])->assertStatus(422);
 
@@ -107,6 +109,7 @@ class TransactionFlowTest extends TestCase
         $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
+            'no_invoice' => true,
             'items' => [['product_id' => $product->id, 'qty' => 2]],
         ])->json('data.id');
 
@@ -131,6 +134,7 @@ class TransactionFlowTest extends TestCase
         $transactionId = $this->actingAs($ownerA, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
+            'no_invoice' => true,
             'items' => [['product_id' => $product->id, 'qty' => 1]],
         ])->json('data.id');
 
@@ -162,6 +166,7 @@ class TransactionFlowTest extends TestCase
         $this->actingAs($ownerA, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
+            'no_invoice' => true,
             'items' => [['product_id' => $productA->id, 'qty' => 1]],
         ])->assertJsonPath('data.trx_number', 'TRX-0001');
 
@@ -174,6 +179,7 @@ class TransactionFlowTest extends TestCase
         $this->actingAs($ownerB, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
+            'no_invoice' => true,
             'items' => [['product_id' => $productB->id, 'qty' => 1]],
         ])->assertJsonPath('data.trx_number', 'TRX-0001');
     }
@@ -189,12 +195,14 @@ class TransactionFlowTest extends TestCase
         $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
             'sender_user_id' => $staff->id,
             'recipient_name' => 'Andi',
+            'no_invoice' => true,
             'items' => [['product_id' => $product->id, 'qty' => 1]],
         ])->assertCreated()->assertJsonPath('data.sender.name', $staff->name);
 
         $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
             'sender_user_id' => $staff->id,
             'recipient_name' => 'Budi',
+            'no_invoice' => true,
             'items' => [['product_id' => $product->id, 'qty' => 1]],
         ])->assertCreated()->assertJsonPath('data.sender.name', $staff->name);
 
@@ -213,6 +221,7 @@ class TransactionFlowTest extends TestCase
             'sender_name' => 'Pak Joko',
             'client_id' => $client->id,
             'recipient_position' => 'QA Manager',
+            'no_invoice' => true,
             'items' => [['product_id' => $product->id, 'qty' => 1]],
         ])->assertCreated()
             ->assertJsonPath('data.recipient.name', 'Andi Wijaya')
@@ -223,6 +232,7 @@ class TransactionFlowTest extends TestCase
             'sender_name' => 'Pak Joko',
             'client_id' => $client->id,
             'recipient_position' => 'Teknisi',
+            'no_invoice' => true,
             'items' => [['product_id' => $product->id, 'qty' => 1]],
         ])->assertCreated()->assertJsonPath('data.recipient.position', 'Teknisi');
 
@@ -242,6 +252,7 @@ class TransactionFlowTest extends TestCase
         $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
             'client_id' => $client->id,
+            'no_invoice' => true,
             'items' => [['product_id' => $product->id, 'qty' => 1]],
         ])->assertCreated()->assertJsonPath('data.recipient.position', 'Manager Gudang');
     }
@@ -266,5 +277,94 @@ class TransactionFlowTest extends TestCase
         $this->assertContains('Test owner', $names);
         $this->assertNotContains('Inactive Guy', $names);
         $this->assertCount(1, $names);
+    }
+
+    public function test_invoice_number_is_required_unless_no_invoice_is_checked(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertStatus(422)->assertJsonValidationErrors('invoice_number');
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->assertJsonPath('data.no_invoice', true);
+    }
+
+    public function test_manual_invoice_number_is_used_when_the_transaction_is_approved(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'invoice_number' => 'INV-MANUAL-0007',
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()
+            ->assertJsonPath('data.invoice_number', 'INV-MANUAL-0007')
+            ->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')
+            ->patchJson("/api/transactions/{$transactionId}/approve")
+            ->assertOk()
+            ->assertJsonPath('data.invoice.invoice_number', 'INV-MANUAL-0007');
+    }
+
+    public function test_a_transaction_marked_no_invoice_gets_no_invoice_record_on_approval(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')
+            ->patchJson("/api/transactions/{$transactionId}/approve")
+            ->assertOk()
+            ->assertJsonPath('data.invoice', null);
+    }
+
+    public function test_invoice_number_must_be_unique_within_the_tenant(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'invoice_number' => 'INV-DUP-0001',
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')
+            ->patchJson("/api/transactions/{$transactionId}/approve")
+            ->assertOk();
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'invoice_number' => 'INV-DUP-0001',
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertStatus(422)->assertJsonValidationErrors('invoice_number');
     }
 }

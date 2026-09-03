@@ -44,6 +44,7 @@ class DashboardReportTest extends TestCase
         $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
             'recipient_name' => 'Andi',
+            'no_invoice' => true,
             'items' => [['product_id' => 1, 'qty' => 1]],
         ])->assertCreated();
 
