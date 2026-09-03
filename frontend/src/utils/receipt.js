@@ -123,11 +123,14 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
   // logical size in points; only the embedded image has SCALE× the pixels.
   const SCALE = 3;
 
-  // Content height varies with item count / address length — draw on a
-  // generously tall scratch canvas first, then crop to what was actually
-  // used. Sized off the item count so a long item list can't overflow it.
+  // Content height varies with item count / address length / barcode box
+  // size — draw on a generously tall scratch canvas first, then crop to
+  // what was actually used. Anything drawn beyond this budget is silently
+  // clipped by the canvas (that's what caused the footer to get cut off
+  // before), so keep this comfortably larger than a realistic worst case
+  // rather than tightly tuned to today's layout.
   const scratch = document.createElement("canvas");
-  const scratchLogicalHeight = 400 + (transaction.items?.length ?? 0) * 30;
+  const scratchLogicalHeight = 900 + (transaction.items?.length ?? 0) * 40;
   scratch.width = width * SCALE;
   scratch.height = scratchLogicalHeight * SCALE;
   const ctx = scratch.getContext("2d");
@@ -288,8 +291,12 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
 
   ctx.font = "400 8px sans-serif";
   ctx.fillStyle = "#9ca3af";
-  ctx.fillText(`Dicetak dari sistem ${tenantName || "jstock"} pada ${formatDateTime(new Date().toISOString())}`, padding, y);
-  y += padding;
+  const footerText = `Dicetak dari sistem ${tenantName || "jstock"} pada ${formatDateTime(new Date().toISOString())}`;
+  wrapText(ctx, footerText, contentWidth).forEach((line) => {
+    ctx.fillText(line, padding, y);
+    y += 11;
+  });
+  y += padding - 11;
 
   const finalLogicalHeight = y;
   const canvas = document.createElement("canvas");
