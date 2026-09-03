@@ -19,7 +19,7 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const navItems = user?.role === "super_admin" ? PLATFORM_NAV_ITEMS : tenantNavItems(user?.tenant_id);
+  const navItems = user?.role === "super_admin" ? PLATFORM_NAV_ITEMS : tenantNavItems(user?.tenant_token);
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (
