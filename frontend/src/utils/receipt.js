@@ -172,7 +172,7 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
     if (barcodeUrl) {
       try {
         const img = await loadImage(barcodeUrl);
-        const boxH = 88;
+        const boxH = 65;
         const scale = Math.min(contentWidth / img.width, boxH / img.height);
         const w = img.width * scale;
         const h = img.height * scale;

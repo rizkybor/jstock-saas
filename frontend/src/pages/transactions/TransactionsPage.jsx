@@ -340,7 +340,7 @@ export default function TransactionsPage() {
               {(selected.barcode_type || selected.status === "approved") && (
                 <div className="rounded-lg border border-border bg-surface-2 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">BARCODE - {selected.trx_number}</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">TRCODE : {selected.trx_number}</div>
                     {selected.status === "approved" && (
                       <Button type="button" variant="secondary" size="sm" loading={downloadingReceipt} onClick={handleDownloadReceipt}>
                         Download Resi
