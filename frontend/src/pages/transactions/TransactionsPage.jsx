@@ -103,7 +103,15 @@ export default function TransactionsPage() {
 
   const columns = [
     { key: "trx_number", header: "No. Transaksi", render: (row) => <CodeChip>{row.trx_number}</CodeChip> },
-    { key: "item", header: "Barang", render: (row) => row.items?.[0]?.product_name ?? "-" },
+    {
+      key: "item",
+      header: "Barang",
+      render: (row) => {
+        const items = row.items ?? [];
+        if (items.length === 0) return "-";
+        return items.length === 1 ? items[0].product_name : `${items[0].product_name} +${items.length - 1} lainnya`;
+      },
+    },
     { key: "sender", header: "Pengirim", render: (row) => row.sender?.name ?? "-" },
     { key: "recipient", header: "Penerima", render: (row) => row.recipient?.name ?? "-" },
     {
@@ -122,7 +130,7 @@ export default function TransactionsPage() {
     },
   ];
 
-  const item = selected?.items?.[0];
+  const items = selected?.items ?? [];
   const isPending = selected?.status === "pending";
   const isMyTurn = !selected?.pending_approval || selected?.pending_approval.role === user?.role;
   const canAct = isPending && isMyTurn && (can("transactions.approve") || can("transactions.delete"));
@@ -193,11 +201,16 @@ export default function TransactionsPage() {
             <div className="flex flex-col gap-4">
               <CodeChip>{selected.trx_number}</CodeChip>
 
-              <div className="rounded-lg bg-surface-2 p-4">
-                <div className="font-semibold text-ink">{item?.product_name ?? "-"}</div>
-                <div className="mt-1 text-sm text-ink-muted">
-                  LOT: {item?.lot_batch ?? "-"} · Qty: {item?.qty ?? "-"}
-                </div>
+              <div className="flex flex-col gap-2 rounded-lg bg-surface-2 p-4">
+                {items.length === 0 && <div className="text-sm text-ink-muted">-</div>}
+                {items.map((it, index) => (
+                  <div key={it.id ?? index} className={index > 0 ? "border-t border-border pt-2" : ""}>
+                    <div className="font-semibold text-ink">{it.product_name}</div>
+                    <div className="mt-1 text-sm text-ink-muted">
+                      LOT: {it.lot_batch ?? "-"} · Qty: {it.qty}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
