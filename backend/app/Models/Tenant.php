@@ -66,9 +66,14 @@ class Tenant extends Model
         return $this->belongsToMany(Module::class, 'tenant_modules');
     }
 
+    /**
+     * Granted to this tenant AND still active in the platform catalog —
+     * a Super Admin deactivating a module catalog-wide (modules.is_active)
+     * takes effect immediately, without having to detach it tenant by tenant.
+     */
     public function hasModule(string $key): bool
     {
-        return $this->modules()->where('key', $key)->exists();
+        return $this->modules()->where('key', $key)->where('modules.is_active', true)->exists();
     }
 
     public function approvalSteps(): HasMany

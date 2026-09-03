@@ -103,4 +103,42 @@ class ModuleManagementTest extends TestCase
             ->postJson("/api/admin/tenants/{$tenant->token}/modules/{$module->id}")
             ->assertStatus(403);
     }
+
+    public function test_deactivating_a_module_in_the_catalog_blocks_every_tenant_that_has_it(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $owner = $this->makeOwner($tenant);
+        $module = Module::create(['key' => 'inventory-gas-kalibrasi', 'name' => 'Inventory Gas Kalibrasi', 'is_active' => true]);
+        $tenant->modules()->attach($module->id);
+
+        $this->actingAs($owner, 'sanctum')->getJson('/api/clients')->assertOk();
+
+        // No per-tenant detach needed — flipping the catalog entry off
+        // takes effect immediately for every tenant that has it.
+        $module->update(['is_active' => false]);
+
+        $this->actingAs($owner, 'sanctum')->getJson('/api/clients')->assertStatus(403);
+    }
+
+    public function test_a_suspended_tenants_existing_token_can_no_longer_reach_module_routes(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'active']);
+        $owner = $this->makeOwner($tenant);
+        $module = Module::create(['key' => 'inventory-gas-kalibrasi', 'name' => 'Inventory Gas Kalibrasi']);
+        $tenant->modules()->attach($module->id);
+
+        // Sanity check: access works before suspension.
+        $this->actingAs($owner, 'sanctum')->getJson('/api/clients')->assertOk();
+
+        // Suspending doesn't revoke the token, but the module gate must
+        // still cut off business access on the very next request.
+        $tenant->update(['status' => 'suspended']);
+
+        // actingAs() pins one PHP user instance for the guard across every
+        // call in this test, and Eloquent caches a loaded belongsTo
+        // relation on that instance — refresh() clears that cache so this
+        // assertion reflects what a real, freshly-authenticated request
+        // would see (a real request always resolves the user from scratch).
+        $this->actingAs($owner->refresh(), 'sanctum')->getJson('/api/clients')->assertStatus(403);
+    }
 }
