@@ -186,6 +186,22 @@ class TransactionController extends Controller
         ]);
     }
 
+    /**
+     * Resolves the value encoded in a transaction's barcode (its
+     * trx_number) back to the full transaction detail — what the
+     * barcode's scan-detail page loads once opened.
+     */
+    public function lookup(string $trxNumber)
+    {
+        $transaction = Transaction::where('trx_number', $trxNumber)->with(self::WITH_RELATIONS)->firstOrFail();
+
+        return response()->json([
+            'success' => true,
+            'data' => new TransactionResource($transaction),
+            'message' => null,
+        ]);
+    }
+
     public function approve(Request $request, Transaction $transaction)
     {
         abort_unless($transaction->status === 'pending', 422, 'Hanya transaksi berstatus pending yang bisa di-approve.');

@@ -529,4 +529,50 @@ class TransactionFlowTest extends TestCase
             'barcode_type' => '39',
         ])->assertStatus(422)->assertJsonValidationErrors('barcode_type');
     }
+
+    public function test_a_transaction_can_be_looked_up_by_its_trx_number_for_a_barcode_scan(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'transaction', 'enabled' => true, 'allowed_types' => ['itf']]);
+
+        $transaction = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+            'barcode_type' => 'itf',
+        ])->assertCreated()->json('data');
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/transactions/lookup/{$transaction['trx_number']}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $transaction['id']);
+    }
+
+    public function test_a_transaction_cannot_be_looked_up_by_trx_number_from_another_tenant(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b', 'status' => 'trial']);
+        $this->enableInventoryModule($tenantA);
+        $this->enableInventoryModule($tenantB);
+        $ownerA = $this->makeUser($tenantA, 'owner');
+        $ownerB = $this->makeUser($tenantB, 'owner');
+        $productA = $this->makeProduct($tenantA, 10);
+
+        $this->actingAs($ownerA, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $productA->id, 'qty' => 1]],
+        ])->assertCreated();
+
+        $this->actingAs($ownerB, 'sanctum')
+            ->getJson('/api/transactions/lookup/TRX-0001')
+            ->assertStatus(404);
+    }
 }

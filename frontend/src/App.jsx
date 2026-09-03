@@ -4,8 +4,10 @@ import LoginPage from "./pages/auth/LoginPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import ClientsPage from "./pages/clients/ClientsPage";
 import ProductsPage from "./pages/products/ProductsPage";
+import ProductScanPage from "./pages/products/ProductScanPage";
 import TransactionsPage from "./pages/transactions/TransactionsPage";
 import TransactionCreatePage from "./pages/transactions/TransactionCreatePage";
+import TransactionScanPage from "./pages/transactions/TransactionScanPage";
 import LaporanPage from "./pages/reports/LaporanPage";
 import AdminTenantsPage from "./pages/admin/AdminTenantsPage";
 import TenantConfigurationPage from "./pages/admin/TenantConfigurationPage";
@@ -31,8 +33,10 @@ function App() {
             <Route path="/:tenantId/dashboard" element={<DashboardPage />} />
             <Route path="/:tenantId/clients" element={<ClientsPage />} />
             <Route path="/:tenantId/products" element={<ProductsPage />} />
+            <Route path="/:tenantId/products/scan/:uniqueId" element={<ProductScanPage />} />
             <Route path="/:tenantId/transactions" element={<TransactionsPage />} />
             <Route path="/:tenantId/transactions/new" element={<TransactionCreatePage />} />
+            <Route path="/:tenantId/transactions/scan/:trxNumber" element={<TransactionScanPage />} />
             <Route path="/:tenantId/reports" element={<LaporanPage />} />
           </Route>
 

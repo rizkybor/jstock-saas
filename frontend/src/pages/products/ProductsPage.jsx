@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
-import { BARCODE_TYPES, barcodeImageUrl, barcodeTypeLabel } from "../../utils/barcode";
+import { BARCODE_TYPES, barcodeImageUrl, barcodePayload, barcodeTypeLabel, productScanUrl } from "../../utils/barcode";
 import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_CREATE_FORM = {
@@ -47,6 +48,7 @@ const seriesBadgeTone = (name = "") => {
 
 export default function ProductsPage() {
   const { can } = useAuth();
+  const { tenantId } = useParams();
   const [products, setProducts] = useState([]);
   const [series, setSeries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +62,9 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [seriesFilter, setSeriesFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [scanCode, setScanCode] = useState("");
+  const [scanError, setScanError] = useState(null);
+  const [scanning, setScanning] = useState(false);
 
   const [formMode, setFormMode] = useState(null); // "create" | "edit" | null
   const [editingProduct, setEditingProduct] = useState(null);
@@ -118,6 +123,25 @@ export default function ProductsPage() {
   const handleFilterSubmit = (event) => {
     event.preventDefault();
     loadProducts(1);
+  };
+
+  // Handheld scanners act like a keyboard, typing the barcode's raw value
+  // (unique_id) into whichever field has focus, then pressing Enter — this
+  // resolves that scan to the same product detail view as clicking a row.
+  const handleScanSubmit = async (event) => {
+    event.preventDefault();
+    if (!scanCode.trim()) return;
+    setScanError(null);
+    setScanning(true);
+    try {
+      const { data } = await apiClient.get(`/products/lookup/${encodeURIComponent(scanCode.trim())}`);
+      setDetailProduct(data.data);
+      setScanCode("");
+    } catch {
+      setScanError("Barang dengan ID unik tersebut tidak ditemukan.");
+    } finally {
+      setScanning(false);
+    }
   };
 
   const openCreate = () => {
@@ -300,6 +324,23 @@ export default function ProductsPage() {
           <Alert>{error}</Alert>
         </div>
       )}
+
+      <form onSubmit={handleScanSubmit} className="mb-3 flex flex-wrap items-start gap-3">
+        <div className="min-w-56 flex-1">
+          <Input
+            placeholder="Scan barcode / ID Unik barang..."
+            value={scanCode}
+            onChange={(e) => {
+              setScanCode(e.target.value);
+              setScanError(null);
+            }}
+            error={scanError}
+          />
+        </div>
+        <Button type="submit" variant="secondary" loading={scanning} disabled={!scanCode.trim()}>
+          Lihat Detail
+        </Button>
+      </form>
 
       <form onSubmit={handleFilterSubmit} className="mb-4 flex flex-wrap gap-3">
         <Input
@@ -583,7 +624,10 @@ export default function ProductsPage() {
                 </Select>
                 {form.barcode_type && form.unique_id && (
                   <img
-                    src={barcodeImageUrl(form.barcode_type, form.unique_id)}
+                    src={barcodeImageUrl(
+                      form.barcode_type,
+                      barcodePayload(form.barcode_type, form.unique_id, productScanUrl(tenantId, form.unique_id)),
+                    )}
                     alt="Preview barcode"
                     className="mt-2 h-16 rounded border border-border bg-white p-1"
                   />
@@ -719,10 +763,21 @@ export default function ProductsPage() {
                   Barcode — {barcodeTypeLabel(detailProduct.barcode_type)}
                 </div>
                 <img
-                  src={barcodeImageUrl(detailProduct.barcode_type, detailProduct.unique_id)}
+                  src={barcodeImageUrl(
+                    detailProduct.barcode_type,
+                    barcodePayload(
+                      detailProduct.barcode_type,
+                      detailProduct.unique_id,
+                      productScanUrl(tenantId, detailProduct.unique_id),
+                    ),
+                  )}
                   alt="Barcode"
                   className="h-20 rounded bg-white p-2"
                 />
+                <p className="mt-2 text-xs text-ink-muted">
+                  QR Code membuka halaman detail ini langsung saat discan. Tipe lain dapat dipindai ke kolom "Scan
+                  barcode / ID Unik barang" di atas.
+                </p>
               </div>
             )}
           </div>

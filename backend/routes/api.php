@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/products', [ProductController::class, 'index'])->middleware('permission:products.view');
         Route::post('/products', [ProductController::class, 'store'])->middleware('permission:products.create');
+        Route::get('/products/lookup/{uniqueId}', [ProductController::class, 'lookup'])->middleware('permission:products.view');
         Route::get('/products/{product}', [ProductController::class, 'show'])->middleware('permission:products.view');
         Route::put('/products/{product}', [ProductController::class, 'update'])->middleware('permission:products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('permission:products.delete');
@@ -63,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/transactions', [TransactionController::class, 'index'])->middleware('permission:transactions.view');
         Route::post('/transactions', [TransactionController::class, 'store'])->middleware('permission:transactions.create');
         Route::get('/transactions/next-number', [TransactionController::class, 'nextTrxNumber'])->middleware('permission:transactions.create');
+        Route::get('/transactions/lookup/{trxNumber}', [TransactionController::class, 'lookup'])->middleware('permission:transactions.view');
         Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->middleware('permission:transactions.view');
         Route::patch('/transactions/{transaction}/approve', [TransactionController::class, 'approve'])->middleware('permission:transactions.approve');
         Route::patch('/transactions/{transaction}/reject', [TransactionController::class, 'reject'])->middleware('permission:transactions.approve');

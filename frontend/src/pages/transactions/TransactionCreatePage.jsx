@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
 import { Alert, Button, Card, CodeChip, Input, RequiredMark, Select, Skeleton } from "../../components/ui";
-import { BARCODE_TYPES, barcodeImageUrl } from "../../utils/barcode";
+import { BARCODE_TYPES, barcodeImageUrl, barcodePayload, transactionScanUrl } from "../../utils/barcode";
 import { EMPTY_ADDRESS, fetchProvinces } from "../../utils/wilayah";
 
 const EMPTY_FORM = {
@@ -477,7 +477,10 @@ export default function TransactionCreatePage() {
             </Select>
             {form.barcode_type && trxNumber && (
               <img
-                src={barcodeImageUrl(form.barcode_type, trxNumber)}
+                src={barcodeImageUrl(
+                  form.barcode_type,
+                  barcodePayload(form.barcode_type, trxNumber, transactionScanUrl(tenantId, trxNumber)),
+                )}
                 alt="Preview barcode"
                 className="mt-3 h-16 rounded border border-border bg-white p-1"
               />

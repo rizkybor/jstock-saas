@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
-import { barcodeImageUrl, barcodeTypeLabel } from "../../utils/barcode";
+import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, transactionScanUrl } from "../../utils/barcode";
 
 export default function TransactionsPage() {
   const { can, user } = useAuth();
@@ -15,6 +15,9 @@ export default function TransactionsPage() {
 
   const [listSearch, setListSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [scanCode, setScanCode] = useState("");
+  const [scanError, setScanError] = useState(null);
+  const [scanning, setScanning] = useState(false);
 
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -65,6 +68,27 @@ export default function TransactionsPage() {
   };
 
   const closeDetail = () => setSelected(null);
+
+  // Handheld scanners act like a keyboard, typing the barcode's raw value
+  // (trx_number) into whichever field has focus, then pressing Enter — this
+  // resolves that scan to the same transaction detail view as clicking a row.
+  const handleScanSubmit = async (event) => {
+    event.preventDefault();
+    if (!scanCode.trim()) return;
+    setScanError(null);
+    setScanning(true);
+    try {
+      const { data } = await apiClient.get(`/transactions/lookup/${encodeURIComponent(scanCode.trim())}`);
+      setSelected(data.data);
+      setRejectionNote("");
+      setDetailError(null);
+      setScanCode("");
+    } catch {
+      setScanError("Transaksi dengan No. Transaksi tersebut tidak ditemukan.");
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const handleApprove = async () => {
     setDetailError(null);
@@ -155,6 +179,23 @@ export default function TransactionsPage() {
           <Alert>{error}</Alert>
         </div>
       )}
+
+      <form onSubmit={handleScanSubmit} className="mb-3 flex flex-wrap items-start gap-3">
+        <div className="min-w-56 flex-1">
+          <Input
+            placeholder="Scan barcode / No. Transaksi..."
+            value={scanCode}
+            onChange={(e) => {
+              setScanCode(e.target.value);
+              setScanError(null);
+            }}
+            error={scanError}
+          />
+        </div>
+        <Button type="submit" variant="secondary" loading={scanning} disabled={!scanCode.trim()}>
+          Lihat Detail
+        </Button>
+      </form>
 
       <form onSubmit={handleFilterSubmit} className="mb-4 flex flex-wrap gap-3">
         <Input
@@ -259,7 +300,10 @@ export default function TransactionsPage() {
                     Barcode — {barcodeTypeLabel(selected.barcode_type)}
                   </div>
                   <img
-                    src={barcodeImageUrl(selected.barcode_type, selected.trx_number)}
+                    src={barcodeImageUrl(
+                      selected.barcode_type,
+                      barcodePayload(selected.barcode_type, selected.trx_number, transactionScanUrl(tenantId, selected.trx_number)),
+                    )}
                     alt="Barcode"
                     className="h-20 rounded bg-white p-2"
                   />

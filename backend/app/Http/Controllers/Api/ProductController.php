@@ -82,6 +82,22 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Resolves the value encoded in a product's barcode (its unique_id)
+     * back to the full product detail — what the barcode's scan-detail
+     * page loads once opened.
+     */
+    public function lookup(string $uniqueId)
+    {
+        $product = Product::where('unique_id', $uniqueId)->with('series')->firstOrFail();
+
+        return response()->json([
+            'success' => true,
+            'data' => new ProductResource($product),
+            'message' => null,
+        ]);
+    }
+
     public function update(UpdateProductRequest $request, Product $product)
     {
         $data = $request->validated();

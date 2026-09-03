@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Product;
 use App\Models\ProductSeries;
 use App\Models\Tenant;
 use App\Models\TenantBarcodeSetting;
@@ -165,5 +166,49 @@ class ProductFlowTest extends TestCase
             ->assertJsonPath('data.barcode_type', '39');
 
         $this->assertNotEmpty($response->json('data.unique_id'));
+    }
+
+    public function test_a_product_can_be_looked_up_by_its_unique_id_for_a_barcode_scan(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeOwner($tenant);
+        $series = ProductSeries::create(['tenant_id' => $tenant->id, 'name' => 'CH4 — 2.5%']);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'product', 'enabled' => true, 'allowed_types' => ['qr']]);
+
+        $productId = $this->actingAs($owner, 'sanctum')->postJson('/api/products', [
+            'name' => 'Gas Kalibrasi CH4 2.5%',
+            'product_series_id' => $series->id,
+            'unit_cost' => 100000,
+            'quantity' => 10,
+            'barcode_type' => 'qr',
+        ])->assertCreated()->json('data');
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/products/lookup/{$productId['unique_id']}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $productId['id']);
+    }
+
+    public function test_a_product_cannot_be_looked_up_by_unique_id_from_another_tenant(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b', 'status' => 'trial']);
+        $this->enableInventoryModule($tenantA);
+        $this->enableInventoryModule($tenantB);
+        $ownerB = $this->makeOwner($tenantB);
+        Product::create([
+            'tenant_id' => $tenantA->id,
+            'name' => 'Barang Tenant A',
+            'unique_id' => 'BRG-ISOLATED',
+            'unit_cost' => 1000,
+            'grand_total_cost' => 1000,
+            'cogs' => 1000,
+            'stock_qty' => 1,
+        ]);
+
+        $this->actingAs($ownerB, 'sanctum')
+            ->getJson('/api/products/lookup/BRG-ISOLATED')
+            ->assertStatus(404);
     }
 }
