@@ -3,6 +3,7 @@ import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
+import { BARCODE_TYPES, barcodeImageUrl, barcodeTypeLabel } from "../../utils/barcode";
 import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_CREATE_FORM = {
@@ -12,6 +13,7 @@ const EMPTY_CREATE_FORM = {
   new_series_name: "",
   lot_batch: "",
   unique_id: "",
+  barcode_type: "",
   item_detail: "",
   unit_cost: "",
   additional_cost: "",
@@ -52,6 +54,8 @@ export default function ProductsPage() {
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [detailProduct, setDetailProduct] = useState(null);
+  const [barcodeSettings, setBarcodeSettings] = useState({ enabled: false, allowed_types: [] });
 
   const [search, setSearch] = useState("");
   const [seriesFilter, setSeriesFilter] = useState("");
@@ -95,9 +99,19 @@ export default function ProductsPage() {
     }
   };
 
+  const loadBarcodeSettings = async () => {
+    try {
+      const { data } = await apiClient.get("/barcode-settings");
+      setBarcodeSettings(data.data.product);
+    } catch {
+      // Non-fatal: barcode picker just stays hidden.
+    }
+  };
+
   useEffect(() => {
     loadProducts(1);
     loadSeries();
+    loadBarcodeSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -120,6 +134,7 @@ export default function ProductsPage() {
       product_series_id: product.product_series_id ?? "",
       lot_batch: product.lot_batch ?? "",
       unique_id: product.unique_id ?? "",
+      barcode_type: product.barcode_type ?? "",
       item_detail: product.item_detail ?? "",
       unit_cost: product.unit_cost ?? "",
       additional_cost: product.additional_cost ?? "",
@@ -187,6 +202,7 @@ export default function ProductsPage() {
           product_series_id: seriesId,
           lot_batch: form.lot_batch || undefined,
           unique_id: form.unique_id || undefined,
+          barcode_type: form.barcode_type || undefined,
           item_detail: form.item_detail || undefined,
           unit_cost: form.unit_cost,
           additional_cost: form.additional_cost || undefined,
@@ -244,7 +260,7 @@ export default function ProductsPage() {
       key: "actions",
       header: "Aksi",
       render: (row) => (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
           <Can permission="products.update">
             <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
               Edit
@@ -307,6 +323,7 @@ export default function ProductsPage() {
         emptyMessage="Belum ada data barang."
         startIndex={(meta.current_page - 1) * 10}
         loading={loading}
+        onRowClick={(row) => setDetailProduct(row)}
       />
       {!loading && (
         <Pagination
@@ -387,6 +404,24 @@ export default function ProductsPage() {
               value={form.unique_id}
               onChange={(e) => setForm({ ...form, unique_id: e.target.value })}
             />
+
+            {barcodeSettings.enabled && barcodeSettings.allowed_types.length > 0 && (
+              <div>
+                <Select
+                  label="Jenis Barcode"
+                  hint="Kosongkan jika barang ini tidak perlu barcode. ID Unik akan digenerate otomatis bila belum diisi."
+                  value={form.barcode_type}
+                  onChange={(e) => setForm({ ...form, barcode_type: e.target.value })}
+                >
+                  <option value="">Tanpa Barcode</option>
+                  {BARCODE_TYPES.filter((t) => barcodeSettings.allowed_types.includes(t.value)).map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
 
             <Textarea
               label="Item Detail"
@@ -524,6 +559,31 @@ export default function ProductsPage() {
               onChange={(e) => setForm({ ...form, unique_id: e.target.value })}
             />
 
+            {barcodeSettings.enabled && barcodeSettings.allowed_types.length > 0 && (
+              <div>
+                <Select
+                  label="Jenis Barcode"
+                  hint="Kosongkan jika barang ini tidak perlu barcode. ID Unik akan digenerate otomatis bila belum diisi."
+                  value={form.barcode_type}
+                  onChange={(e) => setForm({ ...form, barcode_type: e.target.value })}
+                >
+                  <option value="">Tanpa Barcode</option>
+                  {BARCODE_TYPES.filter((t) => barcodeSettings.allowed_types.includes(t.value)).map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+                {form.barcode_type && form.unique_id && (
+                  <img
+                    src={barcodeImageUrl(form.barcode_type, form.unique_id)}
+                    alt="Preview barcode"
+                    className="mt-2 h-16 rounded border border-border bg-white p-1"
+                  />
+                )}
+              </div>
+            )}
+
             <Textarea
               label="Item Detail"
               name="item_detail"
@@ -598,6 +658,67 @@ export default function ProductsPage() {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {detailProduct && (
+        <Modal title="Detail Barang" description={detailProduct.name} onClose={() => setDetailProduct(null)} width="480px">
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Jenis Gas</div>
+                <div className="text-ink">{detailProduct.series?.name ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">LOT/Batch</div>
+                <div className="text-ink">{detailProduct.lot_batch ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">ID Unik</div>
+                <div className="text-ink">{detailProduct.unique_id ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Tgl Input</div>
+                <div className="text-ink">{formatDate(detailProduct.input_date)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Unit Cost</div>
+                <div className="text-ink">{formatCurrency(detailProduct.unit_cost)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Kuantitas</div>
+                <div className="text-ink">{detailProduct.stock_qty}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Grand Total Cost</div>
+                <div className="font-semibold text-ink">{formatCurrency(detailProduct.grand_total_cost)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">COGS</div>
+                <div className="text-ink">{formatCurrency(detailProduct.cogs)}</div>
+              </div>
+            </div>
+
+            {detailProduct.item_detail && (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Item Detail</div>
+                <div className="text-sm text-ink">{detailProduct.item_detail}</div>
+              </div>
+            )}
+
+            {detailProduct.barcode_type && detailProduct.unique_id && (
+              <div className="rounded-lg border border-border bg-surface-2 p-3">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Barcode — {barcodeTypeLabel(detailProduct.barcode_type)}
+                </div>
+                <img
+                  src={barcodeImageUrl(detailProduct.barcode_type, detailProduct.unique_id)}
+                  alt="Barcode"
+                  className="h-20 rounded bg-white p-2"
+                />
+              </div>
+            )}
+          </div>
         </Modal>
       )}
 

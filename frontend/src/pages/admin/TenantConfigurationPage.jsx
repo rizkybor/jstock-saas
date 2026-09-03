@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Skeleton, Tabs } from "../../components/ui";
+import { BARCODE_TYPES } from "../../utils/barcode";
 import { hasErrors, validate } from "../../utils/validate";
 
 const PROFILE_RULES = [
@@ -17,7 +18,18 @@ const TABS = [
   { key: "users", label: "Pengguna" },
   { key: "roles", label: "Roles & Permission" },
   { key: "approval", label: "Approval" },
+  { key: "barcode", label: "Barcode" },
 ];
+
+const BARCODE_FEATURE_LABELS = {
+  product: "Tambah Barang",
+  transaction: "Transaksi Barang Keluar",
+};
+
+const EMPTY_BARCODE_SETTINGS = {
+  product: { enabled: false, allowed_types: [] },
+  transaction: { enabled: false, allowed_types: [] },
+};
 
 const SUBSCRIPTION_STATUS_LABELS = {
   trialing: "Trial",
@@ -103,6 +115,12 @@ export default function TenantConfigurationPage() {
   const [approvalMessage, setApprovalMessage] = useState(null);
   const [approvalWarnings, setApprovalWarnings] = useState([]);
   const [savingApproval, setSavingApproval] = useState(false);
+
+  const [barcodeSettings, setBarcodeSettings] = useState(EMPTY_BARCODE_SETTINGS);
+  const [barcodeLoading, setBarcodeLoading] = useState(true);
+  const [barcodeError, setBarcodeError] = useState(null);
+  const [barcodeMessage, setBarcodeMessage] = useState(null);
+  const [savingBarcode, setSavingBarcode] = useState(false);
 
   const loadTenant = async () => {
     setLoading(true);
@@ -202,6 +220,19 @@ export default function TenantConfigurationPage() {
     }
   };
 
+  const loadBarcodeSettings = async () => {
+    setBarcodeLoading(true);
+    setBarcodeError(null);
+    try {
+      const { data } = await apiClient.get(`/admin/tenants/${tenantToken}/barcode-settings`);
+      setBarcodeSettings(data.data);
+    } catch {
+      setBarcodeError("Gagal memuat pengaturan barcode tenant ini.");
+    } finally {
+      setBarcodeLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadTenant();
     loadModules();
@@ -209,6 +240,7 @@ export default function TenantConfigurationPage() {
     loadUsers();
     loadApprovalSettings();
     loadPlanData();
+    loadBarcodeSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantToken]);
 
@@ -349,6 +381,33 @@ export default function TenantConfigurationPage() {
       setApprovalError(err.response?.data?.message ?? "Gagal menyimpan pengaturan approval.");
     } finally {
       setSavingApproval(false);
+    }
+  };
+
+  const toggleBarcodeFeature = (feature, enabled) => {
+    setBarcodeSettings((s) => ({ ...s, [feature]: { ...s[feature], enabled } }));
+  };
+
+  const toggleBarcodeType = (feature, type) => {
+    setBarcodeSettings((s) => {
+      const current = s[feature].allowed_types;
+      const allowed_types = current.includes(type) ? current.filter((t) => t !== type) : [...current, type];
+      return { ...s, [feature]: { ...s[feature], allowed_types } };
+    });
+  };
+
+  const saveBarcodeSettings = async () => {
+    setBarcodeError(null);
+    setBarcodeMessage(null);
+    setSavingBarcode(true);
+    try {
+      const { data } = await apiClient.put(`/admin/tenants/${tenantToken}/barcode-settings`, barcodeSettings);
+      setBarcodeSettings(data.data);
+      setBarcodeMessage("Pengaturan barcode berhasil disimpan.");
+    } catch (err) {
+      setBarcodeError(err.response?.data?.message ?? "Gagal menyimpan pengaturan barcode.");
+    } finally {
+      setSavingBarcode(false);
     }
   };
 
@@ -1077,6 +1136,79 @@ export default function TenantConfigurationPage() {
                   <div className="mt-4">
                     <Button onClick={saveApprovalSettings} loading={savingApproval}>
                       {savingApproval ? "Menyimpan..." : "Simpan Pengaturan Approval"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {tab === "barcode" && (
+            <div className="max-w-2xl">
+              <p className="mb-4 text-sm text-ink-muted">
+                Atur apakah tenant ini boleh membuat barcode otomatis saat Tambah Barang dan Transaksi Barang Keluar, dan
+                jenis barcode apa saja yang boleh dipilih untuk masing-masing fitur.
+              </p>
+
+              {barcodeError && (
+                <div className="mb-3">
+                  <Alert>{barcodeError}</Alert>
+                </div>
+              )}
+
+              {barcodeLoading ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <Skeleton key={i} className="h-32 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-4">
+                    {Object.keys(BARCODE_FEATURE_LABELS).map((feature) => (
+                      <div key={feature} className="rounded-lg border border-border p-3">
+                        <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm font-semibold text-ink">
+                          <input
+                            type="checkbox"
+                            checked={barcodeSettings[feature].enabled}
+                            onChange={(e) => toggleBarcodeFeature(feature, e.target.checked)}
+                            className="h-4 w-4 cursor-pointer accent-primary"
+                          />
+                          Aktifkan barcode untuk {BARCODE_FEATURE_LABELS[feature]}
+                        </label>
+
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {BARCODE_TYPES.map((type) => (
+                            <label
+                              key={type.value}
+                              className={`flex items-center gap-2 text-sm text-ink ${
+                                barcodeSettings[feature].enabled ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                disabled={!barcodeSettings[feature].enabled}
+                                checked={barcodeSettings[feature].allowed_types.includes(type.value)}
+                                onChange={() => toggleBarcodeType(feature, type.value)}
+                                className="h-4 w-4 cursor-pointer accent-primary"
+                              />
+                              {type.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {barcodeMessage && (
+                    <div className="mt-4">
+                      <Alert tone="success">{barcodeMessage}</Alert>
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <Button onClick={saveBarcodeSettings} loading={savingBarcode}>
+                      {savingBarcode ? "Menyimpan..." : "Simpan Pengaturan Barcode"}
                     </Button>
                   </div>
                 </>

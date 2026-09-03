@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
+import { barcodeImageUrl, barcodeTypeLabel } from "../../utils/barcode";
 
 export default function TransactionsPage() {
   const { can, user } = useAuth();
@@ -251,6 +252,19 @@ export default function TransactionsPage() {
                   {selected.no_invoice ? "Tanpa Invoice" : (selected.invoice_number ?? "-")}
                 </div>
               </div>
+
+              {selected.barcode_type && (
+                <div className="rounded-lg border border-border bg-surface-2 p-3">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                    Barcode — {barcodeTypeLabel(selected.barcode_type)}
+                  </div>
+                  <img
+                    src={barcodeImageUrl(selected.barcode_type, selected.trx_number)}
+                    alt="Barcode"
+                    className="h-20 rounded bg-white p-2"
+                  />
+                </div>
+              )}
 
               {!isPending && (
                 <div>

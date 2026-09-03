@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
 import { Alert, Button, Card, CodeChip, Input, RequiredMark, Select, Skeleton } from "../../components/ui";
+import { BARCODE_TYPES, barcodeImageUrl } from "../../utils/barcode";
 import { EMPTY_ADDRESS, fetchProvinces } from "../../utils/wilayah";
 
 const EMPTY_FORM = {
@@ -20,6 +21,7 @@ const EMPTY_FORM = {
   newAddress: { ...EMPTY_ADDRESS },
   invoice_number: "",
   no_invoice: false,
+  barcode_type: "",
 };
 
 const formatCurrency = (value) => `Rp ${Number(value).toLocaleString("id-ID")}`;
@@ -39,6 +41,7 @@ export default function TransactionCreatePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [stagingQty, setStagingQty] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
+  const [barcodeSettings, setBarcodeSettings] = useState({ enabled: false, allowed_types: [] });
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -66,6 +69,10 @@ export default function TransactionCreatePage() {
     fetchProvinces()
       .then(setProvinces)
       .catch(() => setProvinces([]));
+    apiClient
+      .get("/barcode-settings")
+      .then(({ data }) => setBarcodeSettings(data.data.transaction))
+      .catch(() => {});
   }, []);
 
   // Klien dipilih sebagai Penerima -> ambil alamat-alamat yang sudah ada
@@ -175,6 +182,7 @@ export default function TransactionCreatePage() {
         address: usingNewAddress ? form.newAddress : undefined,
         no_invoice: form.no_invoice,
         invoice_number: form.no_invoice ? undefined : form.invoice_number,
+        barcode_type: form.barcode_type || undefined,
         items: form.items.map((i) => ({ product_id: i.product.id, qty: i.qty })),
       });
       navigate(`/${tenantId}/transactions`);
@@ -451,6 +459,31 @@ export default function TransactionCreatePage() {
             Tanpa Invoice
           </label>
         </Card>
+
+        {barcodeSettings.enabled && barcodeSettings.allowed_types.length > 0 && (
+          <Card title="Barcode" className="mt-6">
+            <Select
+              label="Jenis Barcode"
+              hint="Kosongkan jika transaksi ini tidak perlu barcode."
+              value={form.barcode_type}
+              onChange={(e) => setForm({ ...form, barcode_type: e.target.value })}
+            >
+              <option value="">Tanpa Barcode</option>
+              {BARCODE_TYPES.filter((t) => barcodeSettings.allowed_types.includes(t.value)).map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </Select>
+            {form.barcode_type && trxNumber && (
+              <img
+                src={barcodeImageUrl(form.barcode_type, trxNumber)}
+                alt="Preview barcode"
+                className="mt-3 h-16 rounded border border-border bg-white p-1"
+              />
+            )}
+          </Card>
+        )}
 
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={() => navigate(`/${tenantId}/transactions`)}>
