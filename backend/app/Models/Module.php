@@ -9,6 +9,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 #[Fillable(['key', 'name', 'description', 'is_active'])]
 class Module extends Model
 {
+    /**
+     * The menus each module exposes in the tenant sidebar, keyed by module
+     * key — what Super Admin's per-tenant menu-access configuration (see
+     * TenantMenuSetting) offers checkboxes for, and what AppLayout on the
+     * frontend uses to decide which nav links to render.
+     *
+     * @var array<string, array<string, string>>
+     */
+    public const MENU_CATALOG = [
+        'inventory-gas-kalibrasi' => [
+            'dashboard' => 'Dashboard',
+            'clients' => 'Data Klien',
+            'products' => 'Data Barang',
+            'transactions' => 'Transaksi',
+            'reports' => 'Laporan',
+        ],
+    ];
+
     protected function casts(): array
     {
         return [

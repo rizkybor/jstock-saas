@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\ApprovalSettingsController as AdminApprovalSettingsController;
 use App\Http\Controllers\Api\Admin\BarcodeSettingController as AdminBarcodeSettingController;
+use App\Http\Controllers\Api\Admin\MenuSettingController as AdminMenuSettingController;
 use App\Http\Controllers\Api\Admin\ModuleController as AdminModuleController;
 use App\Http\Controllers\Api\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Api\Admin\RolePermissionController as AdminRolePermissionController;
@@ -33,42 +34,56 @@ Route::middleware('auth:sanctum')->group(function () {
     // future modules (different business processes) get their own prefix
     // and their own module:<key> gate here, side by side with this one.
     Route::middleware('module:inventory-gas-kalibrasi')->group(function () {
-        Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('permission:dashboard.view');
+        // barcode-settings is cross-cutting (read by both the products and
+        // transactions forms) so it isn't gated behind any single menu.
         Route::get('/barcode-settings', [BarcodeSettingController::class, 'index'])->middleware('permission:dashboard.view');
-        Route::get('/reports/summary', [ReportController::class, 'summary'])->middleware('permission:reports.view');
 
-        Route::get('/clients', [ClientController::class, 'index'])->middleware('permission:clients.view');
-        Route::post('/clients', [ClientController::class, 'store'])->middleware('permission:clients.create');
-        Route::get('/clients/{client}', [ClientController::class, 'show'])->middleware('permission:clients.view');
-        Route::put('/clients/{client}', [ClientController::class, 'update'])->middleware('permission:clients.update');
-        Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->middleware('permission:clients.delete');
+        Route::middleware('menu:inventory-gas-kalibrasi,dashboard')->group(function () {
+            Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('permission:dashboard.view');
+        });
 
-        Route::get('/product-series', [ProductSeriesController::class, 'index'])->middleware('permission:product-series.view');
-        Route::post('/product-series', [ProductSeriesController::class, 'store'])->middleware('permission:product-series.create');
+        Route::middleware('menu:inventory-gas-kalibrasi,reports')->group(function () {
+            Route::get('/reports/summary', [ReportController::class, 'summary'])->middleware('permission:reports.view');
+        });
 
-        Route::get('/products', [ProductController::class, 'index'])->middleware('permission:products.view');
-        Route::post('/products', [ProductController::class, 'store'])->middleware('permission:products.create');
-        Route::get('/products/lookup/{uniqueId}', [ProductController::class, 'lookup'])->middleware('permission:products.view');
-        Route::get('/products/{product}', [ProductController::class, 'show'])->middleware('permission:products.view');
-        Route::put('/products/{product}', [ProductController::class, 'update'])->middleware('permission:products.update');
-        Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('permission:products.delete');
+        Route::middleware('menu:inventory-gas-kalibrasi,clients')->group(function () {
+            Route::get('/clients', [ClientController::class, 'index'])->middleware('permission:clients.view');
+            Route::post('/clients', [ClientController::class, 'store'])->middleware('permission:clients.create');
+            Route::get('/clients/{client}', [ClientController::class, 'show'])->middleware('permission:clients.view');
+            Route::put('/clients/{client}', [ClientController::class, 'update'])->middleware('permission:clients.update');
+            Route::delete('/clients/{client}', [ClientController::class, 'destroy'])->middleware('permission:clients.delete');
+        });
 
-        Route::get('/users', [UserController::class, 'index'])->middleware('permission:transactions.view');
+        Route::middleware('menu:inventory-gas-kalibrasi,products')->group(function () {
+            Route::get('/product-series', [ProductSeriesController::class, 'index'])->middleware('permission:product-series.view');
+            Route::post('/product-series', [ProductSeriesController::class, 'store'])->middleware('permission:product-series.create');
 
-        Route::get('/senders', [SenderController::class, 'index'])->middleware('permission:transactions.view');
-        Route::post('/senders', [SenderController::class, 'store'])->middleware('permission:transactions.create');
+            Route::get('/products', [ProductController::class, 'index'])->middleware('permission:products.view');
+            Route::post('/products', [ProductController::class, 'store'])->middleware('permission:products.create');
+            Route::get('/products/lookup/{uniqueId}', [ProductController::class, 'lookup'])->middleware('permission:products.view');
+            Route::get('/products/{product}', [ProductController::class, 'show'])->middleware('permission:products.view');
+            Route::put('/products/{product}', [ProductController::class, 'update'])->middleware('permission:products.update');
+            Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('permission:products.delete');
+        });
 
-        Route::get('/recipients', [RecipientController::class, 'index'])->middleware('permission:transactions.view');
-        Route::post('/recipients', [RecipientController::class, 'store'])->middleware('permission:transactions.create');
+        Route::middleware('menu:inventory-gas-kalibrasi,transactions')->group(function () {
+            Route::get('/users', [UserController::class, 'index'])->middleware('permission:transactions.view');
 
-        Route::get('/transactions', [TransactionController::class, 'index'])->middleware('permission:transactions.view');
-        Route::post('/transactions', [TransactionController::class, 'store'])->middleware('permission:transactions.create');
-        Route::get('/transactions/next-number', [TransactionController::class, 'nextTrxNumber'])->middleware('permission:transactions.create');
-        Route::get('/transactions/lookup/{trxNumber}', [TransactionController::class, 'lookup'])->middleware('permission:transactions.view');
-        Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->middleware('permission:transactions.view');
-        Route::patch('/transactions/{transaction}/approve', [TransactionController::class, 'approve'])->middleware('permission:transactions.approve');
-        Route::patch('/transactions/{transaction}/reject', [TransactionController::class, 'reject'])->middleware('permission:transactions.approve');
-        Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->middleware('permission:transactions.delete');
+            Route::get('/senders', [SenderController::class, 'index'])->middleware('permission:transactions.view');
+            Route::post('/senders', [SenderController::class, 'store'])->middleware('permission:transactions.create');
+
+            Route::get('/recipients', [RecipientController::class, 'index'])->middleware('permission:transactions.view');
+            Route::post('/recipients', [RecipientController::class, 'store'])->middleware('permission:transactions.create');
+
+            Route::get('/transactions', [TransactionController::class, 'index'])->middleware('permission:transactions.view');
+            Route::post('/transactions', [TransactionController::class, 'store'])->middleware('permission:transactions.create');
+            Route::get('/transactions/next-number', [TransactionController::class, 'nextTrxNumber'])->middleware('permission:transactions.create');
+            Route::get('/transactions/lookup/{trxNumber}', [TransactionController::class, 'lookup'])->middleware('permission:transactions.view');
+            Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->middleware('permission:transactions.view');
+            Route::patch('/transactions/{transaction}/approve', [TransactionController::class, 'approve'])->middleware('permission:transactions.approve');
+            Route::patch('/transactions/{transaction}/reject', [TransactionController::class, 'reject'])->middleware('permission:transactions.approve');
+            Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->middleware('permission:transactions.delete');
+        });
     });
 
     Route::prefix('admin')->middleware('permission:admin.tenants.view')->group(function () {
@@ -81,6 +96,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/tenants/{tenant}/modules', [AdminTenantController::class, 'modules']);
         Route::post('/tenants/{tenant}/modules/{module}', [AdminTenantController::class, 'attachModule']);
         Route::delete('/tenants/{tenant}/modules/{module}', [AdminTenantController::class, 'detachModule']);
+        Route::get('/tenants/{tenant}/modules/{module}/menu-settings', [AdminMenuSettingController::class, 'index']);
+        Route::put('/tenants/{tenant}/modules/{module}/menu-settings', [AdminMenuSettingController::class, 'update']);
         Route::get('/tenants/{tenant}/subscription', [AdminTenantController::class, 'subscription']);
         Route::put('/tenants/{tenant}/subscription', [AdminTenantController::class, 'updateSubscription']);
         Route::get('/stats', [AdminTenantController::class, 'stats']);

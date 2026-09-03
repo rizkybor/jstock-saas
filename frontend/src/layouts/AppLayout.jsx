@@ -3,12 +3,17 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Can from "../routes/Can";
 
+// The one module the platform has today — each nav item's `menu` key
+// matches Module::MENU_CATALOG on the backend, so Super Admin's per-tenant
+// menu toggle (Konfigurasi Tenant > Modul) controls exactly these links.
+const MODULE_KEY = "inventory-gas-kalibrasi";
+
 const tenantNavItems = (tenantId) => [
-  { to: `/${tenantId}/dashboard`, label: "Dashboard", permission: "dashboard.view" },
-  { to: `/${tenantId}/clients`, label: "Data Klien", permission: "clients.view" },
-  { to: `/${tenantId}/products`, label: "Data Barang", permission: "products.view" },
-  { to: `/${tenantId}/transactions`, label: "Transaksi", permission: "transactions.view" },
-  { to: `/${tenantId}/reports`, label: "Laporan", permission: "reports.view" },
+  { to: `/${tenantId}/dashboard`, label: "Dashboard", permission: "dashboard.view", menu: "dashboard" },
+  { to: `/${tenantId}/clients`, label: "Data Klien", permission: "clients.view", menu: "clients" },
+  { to: `/${tenantId}/products`, label: "Data Barang", permission: "products.view", menu: "products" },
+  { to: `/${tenantId}/transactions`, label: "Transaksi", permission: "transactions.view", menu: "transactions" },
+  { to: `/${tenantId}/reports`, label: "Laporan", permission: "reports.view", menu: "reports" },
 ];
 
 // Super Admin operates at platform level only — it never sees tenant
@@ -20,7 +25,11 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const navItems = user?.role === "super_admin" ? PLATFORM_NAV_ITEMS : tenantNavItems(user?.tenant_token);
+  const hasModule = user?.modules?.includes(MODULE_KEY);
+  const navItems =
+    user?.role === "super_admin"
+      ? PLATFORM_NAV_ITEMS
+      : tenantNavItems(user?.tenant_token).filter((item) => hasModule && user?.menus?.[item.menu] !== false);
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (
@@ -53,6 +62,9 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5">
+          {user?.role !== "super_admin" && navItems.length === 0 && (
+            <p className="px-3 py-2 text-sm text-ink-muted">Belum ada modul aktif untuk perusahaan Anda.</p>
+          )}
           {navItems.map((item) => (
             <Can permission={item.permission} key={item.to}>
               <Link

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\EnsureTenantHasModule;
+use App\Http\Middleware\EnsureTenantMenuEnabled;
 use App\Http\Middleware\IdentifyTenant;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Foundation\Application;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => CheckPermission::class,
             'module' => EnsureTenantHasModule::class,
+            'menu' => EnsureTenantMenuEnabled::class,
         ]);
 
         // jstock is an API-only backend: unauthenticated requests must

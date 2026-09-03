@@ -102,6 +102,9 @@ export default function TenantConfigurationPage() {
   const [modulesLoading, setModulesLoading] = useState(true);
   const [moduleBusyId, setModuleBusyId] = useState(null);
   const [moduleError, setModuleError] = useState(null);
+  const [menuSettings, setMenuSettings] = useState({}); // { [moduleId]: { module_key, menus: [...] } }
+  const [menuBusyKey, setMenuBusyKey] = useState(null); // `${moduleId}:${menuKey}`
+  const [menuError, setMenuError] = useState(null);
 
   const [permissionCatalog, setPermissionCatalog] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -167,12 +170,22 @@ export default function TenantConfigurationPage() {
     }
   };
 
+  const loadMenuSettings = async (module) => {
+    try {
+      const { data } = await apiClient.get(`/admin/tenants/${tenantToken}/modules/${module.id}/menu-settings`);
+      setMenuSettings((prev) => ({ ...prev, [module.id]: data.data }));
+    } catch {
+      // 404 = this module has no configurable menu catalog — nothing to show.
+    }
+  };
+
   const loadModules = async () => {
     setModulesLoading(true);
     setModuleError(null);
     try {
       const { data } = await apiClient.get(`/admin/tenants/${tenantToken}/modules`);
       setCatalogModules(data.data);
+      await Promise.all(data.data.filter((m) => m.enabled).map(loadMenuSettings));
     } catch {
       setModuleError("Gagal memuat modul tenant ini.");
     } finally {
@@ -311,12 +324,28 @@ export default function TenantConfigurationPage() {
         await apiClient.delete(`/admin/tenants/${tenantToken}/modules/${module.id}`);
       } else {
         await apiClient.post(`/admin/tenants/${tenantToken}/modules/${module.id}`);
+        await loadMenuSettings(module);
       }
       setCatalogModules((list) => list.map((m) => (m.id === module.id ? { ...m, enabled: !m.enabled } : m)));
     } catch (err) {
       setModuleError(err.response?.data?.message ?? "Gagal memperbarui modul.");
     } finally {
       setModuleBusyId(null);
+    }
+  };
+
+  const toggleMenu = async (module, menuKey, nextEnabled) => {
+    setMenuError(null);
+    setMenuBusyKey(`${module.id}:${menuKey}`);
+    try {
+      const { data } = await apiClient.put(`/admin/tenants/${tenantToken}/modules/${module.id}/menu-settings`, {
+        menus: { [menuKey]: nextEnabled },
+      });
+      setMenuSettings((prev) => ({ ...prev, [module.id]: data.data }));
+    } catch (err) {
+      setMenuError(err.response?.data?.message ?? "Gagal menyimpan akses menu.");
+    } finally {
+      setMenuBusyKey(null);
     }
   };
 
@@ -806,9 +835,18 @@ export default function TenantConfigurationPage() {
 
           {tab === "modules" && (
             <div className="max-w-xl">
+              <p className="mb-4 text-sm text-ink-muted">
+                Aktifkan modul untuk tenant ini, lalu atur menu mana saja dari modul tersebut yang boleh diakses.
+              </p>
+
               {moduleError && (
                 <div className="mb-3">
                   <Alert>{moduleError}</Alert>
+                </div>
+              )}
+              {menuError && (
+                <div className="mb-3">
+                  <Alert>{menuError}</Alert>
                 </div>
               )}
 
@@ -821,22 +859,43 @@ export default function TenantConfigurationPage() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {catalogModules.map((module) => (
-                    <label
-                      key={module.id}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-surface-2 has-disabled:cursor-not-allowed has-disabled:opacity-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={module.enabled}
-                        disabled={moduleBusyId === module.id}
-                        onChange={() => toggleModule(module)}
-                        className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
-                      />
-                      <div>
-                        <div className="text-sm font-semibold text-ink">{module.name}</div>
-                        {module.description && <div className="text-xs text-ink-muted">{module.description}</div>}
-                      </div>
-                    </label>
+                    <div key={module.id} className="rounded-lg border border-border">
+                      <label className="flex cursor-pointer items-start gap-3 p-3 hover:bg-surface-2">
+                        <input
+                          type="checkbox"
+                          checked={module.enabled}
+                          disabled={moduleBusyId === module.id}
+                          onChange={() => toggleModule(module)}
+                          className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
+                        />
+                        <div>
+                          <div className="text-sm font-semibold text-ink">{module.name}</div>
+                          {module.description && <div className="text-xs text-ink-muted">{module.description}</div>}
+                        </div>
+                      </label>
+
+                      {module.enabled && menuSettings[module.id] && (
+                        <div className="border-t border-border bg-surface-2 p-3 pl-10">
+                          <div className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">
+                            Akses Menu
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            {menuSettings[module.id].menus.map((menu) => (
+                              <label key={menu.key} className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                                <input
+                                  type="checkbox"
+                                  checked={menu.enabled}
+                                  disabled={menuBusyKey === `${module.id}:${menu.key}`}
+                                  onChange={(e) => toggleMenu(module, menu.key, e.target.checked)}
+                                  className="h-4 w-4 cursor-pointer accent-primary"
+                                />
+                                {menu.label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
