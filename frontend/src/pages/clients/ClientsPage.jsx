@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, DataTable, Input, Modal, PageHeader, Pagination } from "../../components/ui";
+import { Alert, Badge, Button, DataTable, Input, Modal, PageHeader, Pagination, Select } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
@@ -21,6 +21,9 @@ export default function ClientsPage() {
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [deactivatingId, setDeactivatingId] = useState(null);
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
   const [formMode, setFormMode] = useState(null); // "create" | "edit" | null
   const [editingClient, setEditingClient] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -32,7 +35,9 @@ export default function ClientsPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get("/clients", { params: { page } });
+      const { data } = await apiClient.get("/clients", {
+        params: { page, q: search || undefined, status: statusFilter || undefined },
+      });
       setClients(data.data);
       setMeta(data.meta);
     } catch (err) {
@@ -44,7 +49,13 @@ export default function ClientsPage() {
 
   useEffect(() => {
     loadClients(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleFilterSubmit = (event) => {
+    event.preventDefault();
+    loadClients(1);
+  };
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
@@ -161,6 +172,24 @@ export default function ClientsPage() {
           <Alert>{error}</Alert>
         </div>
       )}
+
+      <form onSubmit={handleFilterSubmit} className="mb-4 flex flex-wrap gap-3">
+        <Input
+          type="search"
+          placeholder="Cari nama perusahaan / PIC..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="min-w-56 flex-1"
+        />
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Semua Status</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+        </Select>
+        <Button type="submit" variant="secondary">
+          Filter
+        </Button>
+      </form>
 
       <DataTable
         columns={columns}

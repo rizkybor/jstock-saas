@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, DataTable, GearIcon, Input, Modal, PageHeader, Pagination, StatTile } from "../../components/ui";
+import { Alert, Badge, Button, DataTable, GearIcon, Input, Modal, PageHeader, Pagination, Select, StatTile } from "../../components/ui";
 import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_TENANT_FORM = {
@@ -38,11 +38,16 @@ export default function AdminTenantsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [statusBusyToken, setStatusBusyToken] = useState(null);
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
   const loadTenants = async (page = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get("/admin/tenants", { params: { page } });
+      const { data } = await apiClient.get("/admin/tenants", {
+        params: { page, q: search || undefined, status: statusFilter || undefined },
+      });
       setTenants(data.data);
       setMeta(data.meta);
     } catch (err) {
@@ -50,6 +55,11 @@ export default function AdminTenantsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFilterSubmit = (event) => {
+    event.preventDefault();
+    loadTenants(1);
   };
 
   const loadStats = async () => {
@@ -74,6 +84,7 @@ export default function AdminTenantsPage() {
     loadTenants(1);
     loadStats();
     loadCatalogModules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleStatus = async (tenant) => {
@@ -201,6 +212,25 @@ export default function AdminTenantsPage() {
           <Alert>{error}</Alert>
         </div>
       )}
+
+      <form onSubmit={handleFilterSubmit} className="mb-4 flex flex-wrap gap-3">
+        <Input
+          type="search"
+          placeholder="Cari nama tenant..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="min-w-56 flex-1"
+        />
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Semua Status</option>
+          <option value="trial">Trial</option>
+          <option value="active">Aktif</option>
+          <option value="suspended">Suspended</option>
+        </Select>
+        <Button type="submit" variant="secondary">
+          Filter
+        </Button>
+      </form>
 
       <DataTable
         columns={columns}

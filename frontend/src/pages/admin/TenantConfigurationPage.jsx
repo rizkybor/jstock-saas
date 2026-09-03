@@ -8,11 +8,19 @@ const PROFILE_RULES = [{ name: "name", label: "Nama Perusahaan", required: true 
 
 const TABS = [
   { key: "profile", label: "Profil" },
+  { key: "plan", label: "Plan" },
   { key: "modules", label: "Modul" },
   { key: "users", label: "Pengguna" },
   { key: "roles", label: "Roles & Permission" },
   { key: "approval", label: "Approval" },
 ];
+
+const SUBSCRIPTION_STATUS_LABELS = {
+  trialing: "Trial",
+  active: "Aktif",
+  past_due: "Terlambat Bayar",
+  cancelled: "Dibatalkan",
+};
 
 const ROLE_LABELS = {
   owner: "Owner",
@@ -43,6 +51,18 @@ export default function TenantConfigurationPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState(null);
+
+  const [plans, setPlans] = useState([]);
+  const [subscription, setSubscription] = useState(null);
+  const [planLoading, setPlanLoading] = useState(true);
+  const [planError, setPlanError] = useState(null);
+  const [planMessage, setPlanMessage] = useState(null);
+  const [planForm, setPlanForm] = useState({ plan_id: "", status: "active", ends_at: "" });
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [planCreateOpen, setPlanCreateOpen] = useState(false);
+  const [newPlanForm, setNewPlanForm] = useState({ name: "", price: "", max_users: "", max_transactions_per_month: "" });
+  const [savingNewPlan, setSavingNewPlan] = useState(false);
+  const [newPlanError, setNewPlanError] = useState(null);
 
   const [catalogModules, setCatalogModules] = useState([]);
   const [modulesLoading, setModulesLoading] = useState(true);
@@ -140,6 +160,28 @@ export default function TenantConfigurationPage() {
     }
   };
 
+  const loadPlanData = async () => {
+    setPlanLoading(true);
+    setPlanError(null);
+    try {
+      const [plansRes, subRes] = await Promise.all([
+        apiClient.get("/admin/plans"),
+        apiClient.get(`/admin/tenants/${tenantToken}/subscription`),
+      ]);
+      setPlans(plansRes.data.data);
+      setSubscription(subRes.data.data);
+      setPlanForm({
+        plan_id: subRes.data.data?.plan?.id ?? "",
+        status: subRes.data.data?.status ?? "active",
+        ends_at: subRes.data.data?.ends_at ? subRes.data.data.ends_at.slice(0, 10) : "",
+      });
+    } catch {
+      setPlanError("Gagal memuat data plan tenant ini.");
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
   const loadApprovalSettings = async () => {
     setApprovalLoading(true);
     setApprovalError(null);
@@ -160,6 +202,7 @@ export default function TenantConfigurationPage() {
     loadRoles();
     loadUsers();
     loadApprovalSettings();
+    loadPlanData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantToken]);
 
@@ -303,6 +346,60 @@ export default function TenantConfigurationPage() {
     }
   };
 
+  const saveSubscription = async (event) => {
+    event.preventDefault();
+    setPlanError(null);
+    setPlanMessage(null);
+
+    if (!planForm.plan_id) {
+      setPlanError("Pilih plan terlebih dahulu.");
+      return;
+    }
+
+    setSavingPlan(true);
+    try {
+      const { data } = await apiClient.put(`/admin/tenants/${tenantToken}/subscription`, {
+        plan_id: Number(planForm.plan_id),
+        status: planForm.status,
+        ends_at: planForm.ends_at || null,
+      });
+      setSubscription(data.data);
+      setPlanMessage("Plan tenant berhasil diperbarui.");
+    } catch (err) {
+      setPlanError(err.response?.data?.message ?? "Gagal menyimpan plan tenant.");
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
+  const handleCreatePlan = async (event) => {
+    event.preventDefault();
+    setNewPlanError(null);
+
+    if (!newPlanForm.name.trim()) {
+      setNewPlanError("Nama plan wajib diisi.");
+      return;
+    }
+
+    setSavingNewPlan(true);
+    try {
+      const { data } = await apiClient.post("/admin/plans", {
+        name: newPlanForm.name,
+        price: newPlanForm.price || null,
+        max_users: newPlanForm.max_users || null,
+        max_transactions_per_month: newPlanForm.max_transactions_per_month || null,
+      });
+      setPlans((list) => [...list, data.data]);
+      setPlanForm((f) => ({ ...f, plan_id: data.data.id }));
+      setNewPlanForm({ name: "", price: "", max_users: "", max_transactions_per_month: "" });
+      setPlanCreateOpen(false);
+    } catch (err) {
+      setNewPlanError(err.response?.data?.message ?? "Gagal membuat plan baru.");
+    } finally {
+      setSavingNewPlan(false);
+    }
+  };
+
   const openCreateUser = () => {
     setEditingUser(null);
     setUserForm(EMPTY_USER_FORM);
@@ -441,6 +538,146 @@ export default function TenantConfigurationPage() {
                 </Button>
               </div>
             </form>
+          )}
+
+          {tab === "plan" && (
+            <div className="max-w-xl">
+              <p className="mb-4 text-sm text-ink-muted">
+                Kelola plan langganan tenant ini — plan menentukan batas jumlah user dan transaksi per bulan.
+              </p>
+
+              {planError && (
+                <div className="mb-3">
+                  <Alert>{planError}</Alert>
+                </div>
+              )}
+
+              {planLoading ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {subscription?.plan && (
+                    <div className="mb-4 rounded-lg border border-border bg-surface-2 p-3">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="text-sm font-semibold text-ink">{subscription.plan.name}</span>
+                        <Badge status={subscription.status === "active" ? "active" : "inactive"}>
+                          {SUBSCRIPTION_STATUS_LABELS[subscription.status] ?? subscription.status}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-ink-muted">
+                        {subscription.plan.price != null && <>Rp {Number(subscription.plan.price).toLocaleString("id-ID")}/bulan · </>}
+                        Maks {subscription.plan.max_users ?? "∞"} user · Maks{" "}
+                        {subscription.plan.max_transactions_per_month ?? "∞"} transaksi/bulan
+                        {subscription.ends_at && <> · Berakhir {subscription.ends_at.slice(0, 10)}</>}
+                      </div>
+                    </div>
+                  )}
+
+                  <form onSubmit={saveSubscription} className="flex flex-col gap-4">
+                    <div>
+                      <span className="mb-1.5 block text-sm font-semibold text-ink">Plan</span>
+                      <div className="flex gap-2">
+                        <select
+                          value={planForm.plan_id}
+                          onChange={(e) => setPlanForm({ ...planForm, plan_id: e.target.value })}
+                          className="h-10 min-w-0 flex-1 rounded border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+                        >
+                          <option value="">Pilih plan</option>
+                          {plans.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                              {p.price != null ? ` — Rp ${Number(p.price).toLocaleString("id-ID")}/bln` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <Button type="button" variant="secondary" onClick={() => setPlanCreateOpen((v) => !v)}>
+                          + Plan Baru
+                        </Button>
+                      </div>
+                    </div>
+
+                    {planCreateOpen && (
+                      <div className="rounded-lg border border-border p-3">
+                        <div className="mb-3 flex flex-col gap-3 sm:flex-row">
+                          <Input
+                            placeholder="Nama plan (mis. Pro)"
+                            value={newPlanForm.name}
+                            onChange={(e) => setNewPlanForm({ ...newPlanForm, name: e.target.value })}
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="Harga/bulan"
+                            value={newPlanForm.price}
+                            onChange={(e) => setNewPlanForm({ ...newPlanForm, price: e.target.value })}
+                          />
+                        </div>
+                        <div className="mb-3 flex flex-col gap-3 sm:flex-row">
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Maks user"
+                            value={newPlanForm.max_users}
+                            onChange={(e) => setNewPlanForm({ ...newPlanForm, max_users: e.target.value })}
+                          />
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Maks transaksi/bulan"
+                            value={newPlanForm.max_transactions_per_month}
+                            onChange={(e) => setNewPlanForm({ ...newPlanForm, max_transactions_per_month: e.target.value })}
+                          />
+                        </div>
+                        {newPlanError && (
+                          <div className="mb-3">
+                            <Alert>{newPlanError}</Alert>
+                          </div>
+                        )}
+                        <Button type="button" size="sm" loading={savingNewPlan} onClick={handleCreatePlan}>
+                          Simpan Plan Baru
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <span className="mb-1.5 block text-sm font-semibold text-ink">Status Langganan</span>
+                        <select
+                          value={planForm.status}
+                          onChange={(e) => setPlanForm({ ...planForm, status: e.target.value })}
+                          className="h-10 w-full rounded border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+                        >
+                          {Object.entries(SUBSCRIPTION_STATUS_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <Input
+                        label="Berlaku Sampai"
+                        type="date"
+                        value={planForm.ends_at}
+                        onChange={(e) => setPlanForm({ ...planForm, ends_at: e.target.value })}
+                        hint="Opsional"
+                      />
+                    </div>
+
+                    {planMessage && <Alert tone="success">{planMessage}</Alert>}
+
+                    <div>
+                      <Button type="submit" loading={savingPlan}>
+                        {savingPlan ? "Menyimpan..." : "Simpan Plan"}
+                      </Button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
           )}
 
           {tab === "modules" && (
@@ -759,7 +996,7 @@ export default function TenantConfigurationPage() {
                               <select
                                 value={step.role}
                                 onChange={(e) => updateApprovalStep(index, { role: e.target.value })}
-                                className="h-10 flex-1 rounded border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+                                className="h-10 min-w-0 flex-1 rounded border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
                               >
                                 <option value="">Pilih role</option>
                                 {roles.map((r) => (
@@ -768,11 +1005,12 @@ export default function TenantConfigurationPage() {
                                   </option>
                                 ))}
                               </select>
-                              <Input
+                              <input
+                                type="text"
                                 placeholder="Label tahap (opsional)"
-                                className="flex-1"
                                 value={step.label}
                                 onChange={(e) => updateApprovalStep(index, { label: e.target.value })}
+                                className="h-10 min-w-0 flex-1 rounded border border-border bg-surface px-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,117,222,0.12)]"
                               />
                               <div className="flex shrink-0 gap-1">
                                 <Button

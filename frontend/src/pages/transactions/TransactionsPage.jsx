@@ -35,11 +35,16 @@ export default function TransactionsPage() {
   const [actionId, setActionId] = useState(null);
   const [actionType, setActionType] = useState(null);
 
+  const [listSearch, setListSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
   const loadTransactions = async (page = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await apiClient.get("/transactions", { params: { page } });
+      const { data } = await apiClient.get("/transactions", {
+        params: { page, q: listSearch || undefined, status: statusFilter || undefined },
+      });
       setTransactions(data.data);
       setMeta(data.meta);
     } catch (err) {
@@ -70,7 +75,13 @@ export default function TransactionsPage() {
     loadProducts();
     loadSenders();
     loadRecipients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleFilterSubmit = (event) => {
+    event.preventDefault();
+    loadTransactions(1);
+  };
 
   // Meniru "Input ID Barang / scan LOT/Batch + ID Unik — sistem highlight
   // dan auto-pull data barang" dari proses bisnis Transaksi Barang Keluar.
@@ -274,6 +285,26 @@ export default function TransactionsPage() {
           <Alert>{error}</Alert>
         </div>
       )}
+
+      <form onSubmit={handleFilterSubmit} className="mb-4 flex flex-wrap gap-3">
+        <Input
+          type="search"
+          placeholder="Cari no. transaksi / pengirim / penerima..."
+          value={listSearch}
+          onChange={(e) => setListSearch(e.target.value)}
+          className="min-w-56 flex-1"
+        />
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Semua Status</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="cancelled">Cancelled</option>
+        </Select>
+        <Button type="submit" variant="secondary">
+          Filter
+        </Button>
+      </form>
 
       <DataTable
         columns={columns}
