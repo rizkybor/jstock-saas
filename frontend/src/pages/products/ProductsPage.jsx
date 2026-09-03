@@ -362,14 +362,15 @@ export default function ProductsPage() {
 
             <div>
               <div className="flex items-end gap-2">
-                <Input
-                  label="LOT / Batch"
-                  name="lot_batch"
-                  placeholder="LOT-..."
-                  className="flex-1"
-                  value={form.lot_batch}
-                  onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
-                />
+                <div className="min-w-0 flex-1">
+                  <Input
+                    label="LOT / Batch"
+                    name="lot_batch"
+                    placeholder="LOT-..."
+                    value={form.lot_batch}
+                    onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
+                  />
+                </div>
                 <Button type="button" variant="secondary" onClick={generateLotPreview}>
                   Auto-generate
                 </Button>
@@ -497,14 +498,15 @@ export default function ProductsPage() {
 
             <div>
               <div className="flex items-end gap-2">
-                <Input
-                  label="LOT / Batch Number"
-                  name="lot_batch"
-                  placeholder="LOT-..."
-                  className="flex-1"
-                  value={form.lot_batch}
-                  onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
-                />
+                <div className="min-w-0 flex-1">
+                  <Input
+                    label="LOT / Batch Number"
+                    name="lot_batch"
+                    placeholder="LOT-..."
+                    value={form.lot_batch}
+                    onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
+                  />
+                </div>
                 <Button type="button" variant="secondary" onClick={generateLotPreview}>
                   Auto-generate
                 </Button>
