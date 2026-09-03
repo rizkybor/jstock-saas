@@ -151,7 +151,14 @@ export default function ProductsPage() {
     setEditingProduct(null);
   };
 
-  const generateLotPreview = () => setForm((f) => ({ ...f, lot_batch: "" }));
+  // Mirrors ProductController::generateLotBatch() on the backend so the
+  // field shows a real value immediately instead of just going blank —
+  // the backend still generates the authoritative one if this collides.
+  const generateLotPreview = () => {
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase();
+    setForm((f) => ({ ...f, lot_batch: `LOT-${datePart}-${randomPart}` }));
+  };
 
   const selectExistingSeries = (seriesId) => {
     const picked = series.find((s) => String(s.id) === String(seriesId));
