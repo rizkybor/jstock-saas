@@ -20,6 +20,17 @@ class TenantBarcodeSetting extends Model
      */
     public const TYPES = ['qr', '128', '39', 'itf14'];
 
+    /**
+     * Which of the above a tenant may pick from, per feature — a product
+     * label is meant to be scanned by a phone camera (QR only), while a
+     * transaction barcode is meant for a handheld scanner at the point of
+     * shipment (linear types only, no QR).
+     */
+    public const FEATURE_TYPES = [
+        'product' => ['qr'],
+        'transaction' => ['128', '39'],
+    ];
+
     protected function casts(): array
     {
         return [

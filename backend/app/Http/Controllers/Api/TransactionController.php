@@ -154,6 +154,7 @@ class TransactionController extends Controller
                 'sender_id' => $senderId,
                 'recipient_id' => $recipientId,
                 'status' => 'pending',
+                'shipping_status' => 'unshipped',
                 'current_approval_step_id' => $firstStep?->id,
                 'total' => $total,
                 'invoice_number' => $data['no_invoice'] ?? false ? null : $data['invoice_number'],
@@ -190,7 +191,10 @@ class TransactionController extends Controller
     /**
      * Resolves the value encoded in a transaction's barcode (its
      * trx_number) back to the full transaction detail — what the
-     * barcode's scan-detail page loads once opened.
+     * barcode's scan-detail page loads once opened. Scanning an approved,
+     * still-undelivered transaction's barcode is the point-of-shipment
+     * confirmation, so it flips shipping_status to "shipped" as a
+     * side effect here; show() (a plain row click) never does this.
      */
     public function lookup(string $trxNumber)
     {
@@ -201,10 +205,31 @@ class TransactionController extends Controller
             ? Transaction::with(self::WITH_RELATIONS)->findOrFail($id)
             : Transaction::where('trx_number', $trxNumber)->with(self::WITH_RELATIONS)->firstOrFail();
 
+        if ($transaction->status === 'approved' && $transaction->shipping_status === 'unshipped') {
+            $transaction->update(['shipping_status' => 'shipped']);
+        }
+
         return response()->json([
             'success' => true,
             'data' => new TransactionResource($transaction),
             'message' => null,
+        ]);
+    }
+
+    /**
+     * Manual equivalent of the scan-triggered flip above — a button in the
+     * transaction detail modal for when scanning isn't practical.
+     */
+    public function markShipped(Transaction $transaction)
+    {
+        abort_unless($transaction->status === 'approved', 422, 'Hanya transaksi yang sudah disetujui yang bisa ditandai terkirim.');
+
+        $transaction->update(['shipping_status' => 'shipped']);
+
+        return response()->json([
+            'success' => true,
+            'data' => new TransactionResource($transaction->fresh(self::WITH_RELATIONS)),
+            'message' => 'Transaksi ditandai sebagai terkirim.',
         ]);
     }
 

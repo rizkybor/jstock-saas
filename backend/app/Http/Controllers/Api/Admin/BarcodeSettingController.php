@@ -28,10 +28,10 @@ class BarcodeSettingController extends Controller
         $data = $request->validate([
             'product.enabled' => ['required', 'boolean'],
             'product.allowed_types' => ['array'],
-            'product.allowed_types.*' => [Rule::in(TenantBarcodeSetting::TYPES)],
+            'product.allowed_types.*' => [Rule::in(TenantBarcodeSetting::FEATURE_TYPES['product'])],
             'transaction.enabled' => ['required', 'boolean'],
             'transaction.allowed_types' => ['array'],
-            'transaction.allowed_types.*' => [Rule::in(TenantBarcodeSetting::TYPES)],
+            'transaction.allowed_types.*' => [Rule::in(TenantBarcodeSetting::FEATURE_TYPES['transaction'])],
         ]);
 
         foreach (TenantBarcodeSetting::FEATURES as $feature) {

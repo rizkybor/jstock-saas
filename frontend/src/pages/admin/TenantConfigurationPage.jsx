@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Skeleton, Tabs } from "../../components/ui";
-import { BARCODE_TYPES } from "../../utils/barcode";
+import { barcodeTypesForFeature } from "../../utils/barcode";
 import { hasErrors, validate } from "../../utils/validate";
 import { fetchProvinces } from "../../utils/wilayah";
 
@@ -1292,7 +1292,7 @@ export default function TenantConfigurationPage() {
                         </label>
 
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {BARCODE_TYPES.map((type) => (
+                          {barcodeTypesForFeature(feature).map((type) => (
                             <label
                               key={type.value}
                               className={`flex items-center gap-2 text-sm text-ink ${

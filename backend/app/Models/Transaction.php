@@ -13,13 +13,16 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'tenant_id', 'trx_number', 'barcode_type', 'client_id', 'recipient_address_id', 'recipient_address_snapshot', 'sender_id', 'recipient_id',
-    'status', 'current_approval_step_id', 'total', 'invoice_number', 'no_invoice',
+    'status', 'shipping_status', 'current_approval_step_id', 'total', 'invoice_number', 'no_invoice',
     'approved_by', 'approved_at', 'rejection_note',
 ])]
 class Transaction extends Model
 {
     /** @use HasFactory<TransactionFactory> */
     use BelongsToTenant, HasFactory;
+
+    /** Separate from the approval `status` — tracks physical delivery of an approved transaction. */
+    public const SHIPPING_STATUSES = ['unshipped', 'shipped'];
 
     protected function casts(): array
     {

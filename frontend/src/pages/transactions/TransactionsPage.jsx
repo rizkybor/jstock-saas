@@ -28,6 +28,8 @@ export default function TransactionsPage() {
   const [acting, setActing] = useState(false);
   const [downloadingReceipt, setDownloadingReceipt] = useState(false);
   const [receiptError, setReceiptError] = useState(null);
+  const [shipping, setShipping] = useState(false);
+  const [shippingError, setShippingError] = useState(null);
 
   const loadTransactions = async (page = 1) => {
     setLoading(true);
@@ -71,6 +73,20 @@ export default function TransactionsPage() {
   };
 
   const closeDetail = () => setSelected(null);
+
+  const handleMarkShipped = async () => {
+    setShippingError(null);
+    setShipping(true);
+    try {
+      const { data } = await apiClient.patch(`/transactions/${selected.id}/ship`);
+      setSelected(data.data);
+      await loadTransactions(meta.current_page);
+    } catch (err) {
+      setShippingError(err.response?.data?.message ?? "Gagal menandai transaksi sebagai terkirim.");
+    } finally {
+      setShipping(false);
+    }
+  };
 
   const handleDownloadReceipt = async () => {
     setReceiptError(null);
@@ -167,6 +183,18 @@ export default function TransactionsPage() {
           )}
         </div>
       ),
+    },
+    {
+      key: "shipping_status",
+      header: "Status Pengiriman",
+      render: (row) =>
+        row.status === "approved" ? (
+          <Badge status={row.shipping_status === "shipped" ? "approved" : "pending"}>
+            {row.shipping_status === "shipped" ? "Terkirim" : "Belum Terkirim"}
+          </Badge>
+        ) : (
+          <span className="text-xs text-ink-faint">-</span>
+        ),
     },
   ];
 
@@ -354,6 +382,18 @@ export default function TransactionsPage() {
                 </div>
               )}
 
+              {selected.status === "approved" && (
+                <div>
+                  <div className="text-xs text-ink-muted">Status Pengiriman</div>
+                  <div className="mt-1">
+                    <Badge status={selected.shipping_status === "shipped" ? "approved" : "pending"}>
+                      {selected.shipping_status === "shipped" ? "Terkirim" : "Belum Terkirim"}
+                    </Badge>
+                  </div>
+                  {shippingError && <p className="mt-2 text-xs text-danger">{shippingError}</p>}
+                </div>
+              )}
+
               {isPending && !isMyTurn && (
                 <Alert tone="info">
                   Menunggu approval dari role "{selected.pending_approval?.role}" — bukan giliran Anda.
@@ -375,6 +415,11 @@ export default function TransactionsPage() {
                 <Button type="button" variant="secondary" onClick={closeDetail}>
                   Batal
                 </Button>
+                {selected.status === "approved" && selected.shipping_status !== "shipped" && can("transactions.approve") && (
+                  <Button type="button" variant="success" loading={shipping} onClick={handleMarkShipped}>
+                    Tandai Terkirim
+                  </Button>
+                )}
                 {canAct && (
                   <>
                     <Button

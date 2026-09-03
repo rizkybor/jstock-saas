@@ -14,6 +14,23 @@ export function barcodeTypeLabel(type) {
   return BARCODE_TYPES.find((t) => t.value === type)?.label ?? type;
 }
 
+/**
+ * Which barcode types each feature may offer — mirrors
+ * TenantBarcodeSetting::FEATURE_TYPES on the backend. A product label is
+ * meant to be scanned by a phone camera (QR only); a transaction barcode
+ * is meant for a handheld scanner at the point of shipment (linear types
+ * only, no QR).
+ */
+export const FEATURE_BARCODE_TYPES = {
+  product: ["qr"],
+  transaction: ["128", "39"],
+};
+
+export function barcodeTypesForFeature(feature) {
+  const allowed = FEATURE_BARCODE_TYPES[feature] ?? [];
+  return BARCODE_TYPES.filter((t) => allowed.includes(t.value));
+}
+
 export function barcodeImageUrl(type, value, dpi) {
   if (!type || !value) return null;
   const url = `${BASE_URL}/${type}/${encodeURIComponent(value)}`;

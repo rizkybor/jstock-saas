@@ -8,6 +8,7 @@ use App\Models\Recipient;
 use App\Models\Sender;
 use App\Models\Tenant;
 use App\Models\TenantBarcodeSetting;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Support\Gtin14;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -602,5 +603,161 @@ class TransactionFlowTest extends TestCase
         $this->actingAs($ownerB, 'sanctum')
             ->getJson('/api/transactions/lookup/TRX-0001')
             ->assertStatus(404);
+    }
+
+    public function test_a_new_transaction_starts_unshipped(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->assertJsonPath('data.shipping_status', 'unshipped');
+    }
+
+    public function test_scanning_an_approved_transactions_barcode_marks_it_shipped(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')
+            ->patchJson("/api/transactions/{$transactionId}/approve")
+            ->assertOk()
+            ->assertJsonPath('data.transaction.shipping_status', 'unshipped');
+
+        // The scan-lookup endpoint (not a plain row-click show()) is the
+        // point-of-shipment confirmation.
+        $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/transactions/lookup/TRX-0001')
+            ->assertOk()
+            ->assertJsonPath('data.shipping_status', 'shipped');
+
+        $this->assertSame('shipped', Transaction::find($transactionId)->shipping_status);
+    }
+
+    public function test_scanning_a_pending_transactions_barcode_does_not_mark_it_shipped(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->assertJsonPath('data.status', 'pending');
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/transactions/lookup/TRX-0001')
+            ->assertOk()
+            ->assertJsonPath('data.shipping_status', 'unshipped');
+    }
+
+    public function test_clicking_a_row_to_view_it_does_not_mark_it_shipped(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')->patchJson("/api/transactions/{$transactionId}/approve")->assertOk();
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/transactions/{$transactionId}")
+            ->assertOk()
+            ->assertJsonPath('data.shipping_status', 'unshipped');
+    }
+
+    public function test_owner_can_manually_mark_an_approved_transaction_shipped(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')->patchJson("/api/transactions/{$transactionId}/approve")->assertOk();
+
+        $this->actingAs($owner, 'sanctum')
+            ->patchJson("/api/transactions/{$transactionId}/ship")
+            ->assertOk()
+            ->assertJsonPath('data.shipping_status', 'shipped');
+    }
+
+    public function test_marking_a_pending_transaction_shipped_is_rejected(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')
+            ->patchJson("/api/transactions/{$transactionId}/ship")
+            ->assertStatus(422);
+    }
+
+    public function test_operator_without_approve_permission_cannot_mark_shipped(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $operator = $this->makeUser($tenant, 'operator');
+        $product = $this->makeProduct($tenant, 10);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')->patchJson("/api/transactions/{$transactionId}/approve")->assertOk();
+
+        $this->actingAs($operator, 'sanctum')
+            ->patchJson("/api/transactions/{$transactionId}/ship")
+            ->assertStatus(403);
     }
 }

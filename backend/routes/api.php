@@ -82,6 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->middleware('permission:transactions.view');
             Route::patch('/transactions/{transaction}/approve', [TransactionController::class, 'approve'])->middleware('permission:transactions.approve');
             Route::patch('/transactions/{transaction}/reject', [TransactionController::class, 'reject'])->middleware('permission:transactions.approve');
+            Route::patch('/transactions/{transaction}/ship', [TransactionController::class, 'markShipped'])->middleware('permission:transactions.approve');
             Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->middleware('permission:transactions.delete');
         });
     });
