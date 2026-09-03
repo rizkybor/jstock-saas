@@ -370,27 +370,34 @@ export default function TransactionsPage() {
                 </div>
               )}
 
-              {!isPending && (
-                <div>
-                  <Badge status={selected.status}>{selected.status}</Badge>
-                  {selected.status === "rejected" && selected.rejection_note && (
-                    <p className="mt-2 text-sm text-ink-muted">Catatan: {selected.rejection_note}</p>
+              {(!isPending || selected.status === "approved") && (
+                <div className="grid grid-cols-2 gap-4">
+                  {!isPending && (
+                    <div>
+                      <div className="text-xs text-ink-muted">Doc Status</div>
+                      <div className="mt-1">
+                        <Badge status={selected.status}>{selected.status}</Badge>
+                      </div>
+                      {selected.status === "rejected" && selected.rejection_note && (
+                        <p className="mt-2 text-sm text-ink-muted">Catatan: {selected.rejection_note}</p>
+                      )}
+                      {selected.status === "approved" && selected.invoice && (
+                        <p className="mt-2 text-sm text-ink-muted">Invoice: {selected.invoice.invoice_number}</p>
+                      )}
+                    </div>
                   )}
-                  {selected.status === "approved" && selected.invoice && (
-                    <p className="mt-2 text-sm text-ink-muted">Invoice: {selected.invoice.invoice_number}</p>
-                  )}
-                </div>
-              )}
 
-              {selected.status === "approved" && (
-                <div>
-                  <div className="text-xs text-ink-muted">Status Pengiriman</div>
-                  <div className="mt-1">
-                    <Badge status={selected.shipping_status === "shipped" ? "approved" : "pending"}>
-                      {selected.shipping_status === "shipped" ? "Shipped" : "Unshipped"}
-                    </Badge>
-                  </div>
-                  {shippingError && <p className="mt-2 text-xs text-danger">{shippingError}</p>}
+                  {selected.status === "approved" && (
+                    <div>
+                      <div className="text-xs text-ink-muted">Shipping Status</div>
+                      <div className="mt-1">
+                        <Badge status={selected.shipping_status === "shipped" ? "approved" : "pending"}>
+                          {selected.shipping_status === "shipped" ? "Shipped" : "Unshipped"}
+                        </Badge>
+                      </div>
+                      {shippingError && <p className="mt-2 text-xs text-danger">{shippingError}</p>}
+                    </div>
+                  )}
                 </div>
               )}
 
