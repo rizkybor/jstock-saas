@@ -23,6 +23,74 @@ function wrapText(ctx, text, maxWidth) {
   return lines;
 }
 
+/**
+ * Hand-rolled single-page PDF wrapping one JPEG image — avoids pulling in
+ * a PDF library just to export a receipt. JPEG bytes are DCTDecode data
+ * that a PDF stream can embed verbatim, so this is a plain byte-offset
+ * PDF/1.4 file: Catalog -> Pages -> one Page whose content stream just
+ * paints the image across the full page.
+ */
+function buildSingleImagePdf(jpegBytes, widthPx, heightPx) {
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const offsets = [];
+  let length = 0;
+
+  const pushText = (str) => {
+    const bytes = encoder.encode(str);
+    chunks.push(bytes);
+    length += bytes.length;
+  };
+  const pushBytes = (bytes) => {
+    chunks.push(bytes);
+    length += bytes.length;
+  };
+  const beginObj = (num) => {
+    offsets[num] = length;
+    pushText(`${num} 0 obj\n`);
+  };
+
+  pushText("%PDF-1.4\n");
+
+  beginObj(1);
+  pushText("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+
+  beginObj(2);
+  pushText("<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+
+  beginObj(3);
+  pushText(
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${widthPx} ${heightPx}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
+  );
+
+  beginObj(4);
+  pushText(
+    `<< /Type /XObject /Subtype /Image /Width ${widthPx} /Height ${heightPx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`,
+  );
+  pushBytes(jpegBytes);
+  pushText("\nendstream\nendobj\n");
+
+  const content = `q ${widthPx} 0 0 ${heightPx} 0 0 cm /Im0 Do Q`;
+  beginObj(5);
+  pushText(`<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+
+  const xrefOffset = length;
+  const objectCount = 6;
+  pushText(`xref\n0 ${objectCount}\n0000000000 65535 f \n`);
+  for (let i = 1; i < objectCount; i++) {
+    pushText(`${String(offsets[i]).padStart(10, "0")} 00000 n \n`);
+  }
+  pushText(`trailer\n<< /Size ${objectCount} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+
+  const pdf = new Uint8Array(length);
+  let pos = 0;
+  for (const chunk of chunks) {
+    pdf.set(chunk, pos);
+    pos += chunk.length;
+  }
+  return pdf;
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -36,7 +104,7 @@ function loadImage(src) {
 /**
  * Renders an approved transaction as a compact Indonesian courier-style
  * shipping receipt (resi) — sender/recipient boxes, item list, barcode —
- * and downloads it as a PNG. Kept deliberately small/print-like (a few
+ * and downloads it as a PDF. Kept deliberately small/print-like (a few
  * hundred px wide) rather than a full page, same spirit as
  * downloadBarcodeLabel()'s product sticker.
  */
@@ -220,21 +288,21 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
   finalCtx.lineWidth = 2;
   finalCtx.strokeRect(1, 1, width - 2, finalHeight - 2);
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Gagal membuat resi."));
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `resi-${transaction.trx_number}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      resolve();
-    }, "image/png");
+  // The on-screen barcode stays a plain PNG <img> — only the downloaded
+  // resi itself is a PDF, wrapping a high-quality JPEG rendering of the
+  // same canvas (see buildSingleImagePdf).
+  const jpegBlob = await new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Gagal membuat resi."))), "image/jpeg", 0.95);
   });
+  const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
+  const pdfBytes = buildSingleImagePdf(jpegBytes, width, finalHeight);
+
+  const url = URL.createObjectURL(new Blob([pdfBytes], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `resi-${transaction.trx_number}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }

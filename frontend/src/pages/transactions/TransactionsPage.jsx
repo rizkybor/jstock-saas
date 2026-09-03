@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
-import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, transactionScanUrl } from "../../utils/barcode";
+import { barcodeImageUrl, barcodePayload, transactionScanUrl } from "../../utils/barcode";
 import { downloadTransactionReceipt } from "../../utils/receipt";
 
 export default function TransactionsPage() {
@@ -312,9 +312,7 @@ export default function TransactionsPage() {
               {(selected.barcode_type || selected.status === "approved") && (
                 <div className="rounded-lg border border-border bg-surface-2 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                      {selected.barcode_type ? `Barcode — ${barcodeTypeLabel(selected.barcode_type)}` : "Dokumen Transaksi"}
-                    </div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Transaction ID — {selected.id}</div>
                     {selected.status === "approved" && (
                       <Button type="button" variant="secondary" size="sm" loading={downloadingReceipt} onClick={handleDownloadReceipt}>
                         Download Resi
