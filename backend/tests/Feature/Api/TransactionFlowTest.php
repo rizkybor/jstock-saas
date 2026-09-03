@@ -139,4 +139,39 @@ class TransactionFlowTest extends TestCase
             ->patchJson("/api/transactions/{$transactionId}/approve")
             ->assertStatus(404);
     }
+
+    public function test_trx_numbers_are_sequential_per_tenant_and_previewable_before_submit(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b', 'status' => 'trial']);
+        $this->enableInventoryModule($tenantA);
+        $this->enableInventoryModule($tenantB);
+        $ownerA = $this->makeUser($tenantA, 'owner');
+        $ownerB = $this->makeUser($tenantB, 'owner');
+        $productA = $this->makeProduct($tenantA, 10);
+        $productB = $this->makeProduct($tenantB, 10);
+
+        $this->actingAs($ownerA, 'sanctum')
+            ->getJson('/api/transactions/next-number')
+            ->assertOk()
+            ->assertJsonPath('data.trx_number', 'TRX-0001');
+
+        $this->actingAs($ownerA, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'items' => [['product_id' => $productA->id, 'qty' => 1]],
+        ])->assertJsonPath('data.trx_number', 'TRX-0001');
+
+        $this->actingAs($ownerA, 'sanctum')
+            ->getJson('/api/transactions/next-number')
+            ->assertOk()
+            ->assertJsonPath('data.trx_number', 'TRX-0002');
+
+        // A different tenant's counter starts independently at TRX-0001 too.
+        $this->actingAs($ownerB, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'items' => [['product_id' => $productB->id, 'qty' => 1]],
+        ])->assertJsonPath('data.trx_number', 'TRX-0001');
+    }
 }

@@ -14,7 +14,6 @@ use App\Models\Transaction;
 use App\Models\TransactionApproval;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class TransactionController extends Controller
@@ -98,7 +97,7 @@ class TransactionController extends Controller
                 : null;
 
             $transaction = Transaction::create([
-                'trx_number' => $this->generateTrxNumber(),
+                'trx_number' => $this->generateTrxNumber($tenant->id),
                 'client_id' => $data['client_id'] ?? null,
                 'sender_id' => $senderId,
                 'recipient_id' => $recipientId,
@@ -254,12 +253,29 @@ class TransactionController extends Controller
         ]);
     }
 
-    private function generateTrxNumber(): string
+    /**
+     * Per-tenant sequential counter (TRX-0001, TRX-0002, ...) — lets the
+     * "Transaksi Barang Keluar" page show the next number before the
+     * transaction is even submitted, via nextTrxNumber() below.
+     */
+    private function generateTrxNumber(int $tenantId): string
     {
+        $count = Transaction::withoutGlobalScopes()->where('tenant_id', $tenantId)->count();
+
         do {
-            $candidate = 'TRX-'.now()->format('Ymd').'-'.strtoupper(Str::random(5));
-        } while (Transaction::withoutGlobalScopes()->where('trx_number', $candidate)->exists());
+            $count++;
+            $candidate = 'TRX-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        } while (Transaction::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('trx_number', $candidate)->exists());
 
         return $candidate;
+    }
+
+    public function nextTrxNumber(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'data' => ['trx_number' => $this->generateTrxNumber($request->user()->tenant_id)],
+            'message' => null,
+        ]);
     }
 }

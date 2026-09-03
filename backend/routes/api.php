@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/transactions', [TransactionController::class, 'index'])->middleware('permission:transactions.view');
         Route::post('/transactions', [TransactionController::class, 'store'])->middleware('permission:transactions.create');
+        Route::get('/transactions/next-number', [TransactionController::class, 'nextTrxNumber'])->middleware('permission:transactions.create');
         Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->middleware('permission:transactions.view');
         Route::patch('/transactions/{transaction}/approve', [TransactionController::class, 'approve'])->middleware('permission:transactions.approve');
         Route::patch('/transactions/{transaction}/reject', [TransactionController::class, 'reject'])->middleware('permission:transactions.approve');
