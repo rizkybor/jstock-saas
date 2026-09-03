@@ -116,7 +116,12 @@ export default function TransactionScanPage() {
               <img
                 src={barcodeImageUrl(
                   transaction.barcode_type,
-                  barcodePayload(transaction.barcode_type, transaction.trx_number, transactionScanUrl(tenantId, transaction.trx_number)),
+                  barcodePayload(
+                    transaction.barcode_type,
+                    transaction.trx_number,
+                    transactionScanUrl(tenantId, transaction.trx_number),
+                    transaction.id,
+                  ),
                 )}
                 alt="Barcode"
                 className="h-20 rounded bg-white p-2"

@@ -76,7 +76,7 @@ class BarcodeSettingsTest extends TestCase
 
         $this->actingAs($admin, 'sanctum')
             ->putJson("/api/admin/tenants/{$tenant->token}/barcode-settings", [
-                'product' => ['enabled' => true, 'allowed_types' => ['itf14']],
+                'product' => ['enabled' => true, 'allowed_types' => ['itf-14']],
                 'transaction' => ['enabled' => false, 'allowed_types' => []],
             ])
             ->assertStatus(422)

@@ -9,6 +9,7 @@ use App\Models\Sender;
 use App\Models\Tenant;
 use App\Models\TenantBarcodeSetting;
 use App\Models\User;
+use App\Support\Gtin14;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\HasInventoryModule;
 use Tests\TestCase;
@@ -500,7 +501,7 @@ class TransactionFlowTest extends TestCase
         $this->enableInventoryModule($tenant);
         $owner = $this->makeUser($tenant, 'owner');
         $product = $this->makeProduct($tenant, 10);
-        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'transaction', 'enabled' => true, 'allowed_types' => ['128', 'itf']]);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'transaction', 'enabled' => true, 'allowed_types' => ['128', 'itf14']]);
 
         $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
@@ -508,8 +509,8 @@ class TransactionFlowTest extends TestCase
             'no_invoice' => true,
             'address' => ['label' => 'Kantor'],
             'items' => [['product_id' => $product->id, 'qty' => 1]],
-            'barcode_type' => 'itf',
-        ])->assertCreated()->assertJsonPath('data.barcode_type', 'itf');
+            'barcode_type' => 'itf14',
+        ])->assertCreated()->assertJsonPath('data.barcode_type', 'itf14');
     }
 
     public function test_transaction_rejects_a_barcode_type_not_allowed_for_this_tenant(): void
@@ -536,7 +537,7 @@ class TransactionFlowTest extends TestCase
         $this->enableInventoryModule($tenant);
         $owner = $this->makeUser($tenant, 'owner');
         $product = $this->makeProduct($tenant, 10);
-        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'transaction', 'enabled' => true, 'allowed_types' => ['itf']]);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'transaction', 'enabled' => true, 'allowed_types' => ['itf14']]);
 
         $transaction = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
             'sender_name' => 'Pak Joko',
@@ -544,11 +545,38 @@ class TransactionFlowTest extends TestCase
             'no_invoice' => true,
             'address' => ['label' => 'Kantor'],
             'items' => [['product_id' => $product->id, 'qty' => 1]],
-            'barcode_type' => 'itf',
+            'barcode_type' => 'itf14',
         ])->assertCreated()->json('data');
 
         $this->actingAs($owner, 'sanctum')
             ->getJson("/api/transactions/lookup/{$transaction['trx_number']}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $transaction['id']);
+    }
+
+    public function test_a_transaction_can_be_looked_up_by_its_itf14_gtin(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'transaction', 'enabled' => true, 'allowed_types' => ['itf14']]);
+
+        $transaction = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+            'barcode_type' => 'itf14',
+        ])->assertCreated()->json('data');
+
+        // ITF-14 encodes a GTIN-14 derived from the id, not trx_number — a
+        // scan carries that GTIN, and lookup must decode it back.
+        $gtin = Gtin14::encode($transaction['id']);
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/transactions/lookup/{$gtin}")
             ->assertOk()
             ->assertJsonPath('data.id', $transaction['id']);
     }

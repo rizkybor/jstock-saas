@@ -15,6 +15,7 @@ use App\Models\Sender;
 use App\Models\Transaction;
 use App\Models\TransactionApproval;
 use App\Models\User;
+use App\Support\Gtin14;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -193,7 +194,12 @@ class TransactionController extends Controller
      */
     public function lookup(string $trxNumber)
     {
-        $transaction = Transaction::where('trx_number', $trxNumber)->with(self::WITH_RELATIONS)->firstOrFail();
+        // A scanned ITF-14 barcode carries a GTIN-14 derived from the id,
+        // not the trx_number — decode it back before falling through to a
+        // direct trx_number match (Code 128/39, or a manually typed value).
+        $transaction = ($id = Gtin14::decodeToId($trxNumber))
+            ? Transaction::with(self::WITH_RELATIONS)->findOrFail($id)
+            : Transaction::where('trx_number', $trxNumber)->with(self::WITH_RELATIONS)->firstOrFail();
 
         return response()->json([
             'success' => true,

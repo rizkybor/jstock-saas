@@ -7,7 +7,7 @@ export const BARCODE_TYPES = [
   { value: "qr", label: "QR Code" },
   { value: "128", label: "Code 128" },
   { value: "39", label: "Code 39" },
-  { value: "itf", label: "ITF-14" },
+  { value: "itf14", label: "ITF-14" },
 ];
 
 export function barcodeTypeLabel(type) {
@@ -28,14 +28,36 @@ export function transactionScanUrl(tenantId, trxNumber) {
 }
 
 /**
- * Only QR can carry a full URL (linear types like Code 128/39 and ITF-14
- * only encode short plain text — ITF-14 is numeric-only) — so a QR
- * barcode opens the scan-detail page directly when scanned with a phone
- * camera, while other types encode the raw code for a handheld scanner /
- * manual "Cari via Barcode" lookup to resolve to the same page instead.
+ * ITF-14 can only encode a numeric, checksummed GTIN-14 — never our
+ * alphanumeric product/transaction ids — so we derive one deterministically
+ * from the record's own numeric database id instead. Mirrors
+ * App\Support\Gtin14 on the backend; the lookup endpoints decode it back to
+ * the id, so scanning still resolves to the right record.
  */
-export function barcodePayload(type, rawValue, scanUrl) {
-  return type === "qr" ? scanUrl : rawValue;
+export function gtin14Encode(id) {
+  const payload = String(id).padStart(13, "0");
+  let sum = 0;
+  for (let i = 0; i < 13; i++) {
+    sum += Number(payload[12 - i]) * (i % 2 === 0 ? 3 : 1);
+  }
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return payload + checkDigit;
+}
+
+/**
+ * Only QR can carry a full URL (linear types like Code 128/39 only encode
+ * short plain text, and ITF-14 only encodes a numeric GTIN-14) — so a QR
+ * barcode opens the scan-detail page directly when scanned with a phone
+ * camera, Code 128/39 encode the raw code for a handheld scanner / manual
+ * "Cari via Barcode" lookup to resolve to the same page, and ITF-14 encodes
+ * the id-derived GTIN-14 (null before the record has an id yet, e.g. a
+ * create-form preview — barcodeImageUrl() already renders nothing for a
+ * null value).
+ */
+export function barcodePayload(type, rawValue, scanUrl, id) {
+  if (type === "qr") return scanUrl;
+  if (type === "itf14") return id != null ? gtin14Encode(id) : null;
+  return rawValue;
 }
 
 /**

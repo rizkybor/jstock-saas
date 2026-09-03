@@ -7,6 +7,7 @@ use App\Models\ProductSeries;
 use App\Models\Tenant;
 use App\Models\TenantBarcodeSetting;
 use App\Models\User;
+use App\Support\Gtin14;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\HasInventoryModule;
 use Tests\TestCase;
@@ -188,6 +189,32 @@ class ProductFlowTest extends TestCase
             ->getJson("/api/products/lookup/{$productId['unique_id']}")
             ->assertOk()
             ->assertJsonPath('data.id', $productId['id']);
+    }
+
+    public function test_a_product_can_be_looked_up_by_its_itf14_gtin(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeOwner($tenant);
+        $series = ProductSeries::create(['tenant_id' => $tenant->id, 'name' => 'CH4 — 2.5%']);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'product', 'enabled' => true, 'allowed_types' => ['itf14']]);
+
+        $product = $this->actingAs($owner, 'sanctum')->postJson('/api/products', [
+            'name' => 'Gas Kalibrasi CH4 2.5%',
+            'product_series_id' => $series->id,
+            'unit_cost' => 100000,
+            'quantity' => 10,
+            'barcode_type' => 'itf14',
+        ])->assertCreated()->json('data');
+
+        // ITF-14 encodes a GTIN-14 derived from the id, not the alphanumeric
+        // unique_id — a scan carries that GTIN, and lookup must decode it.
+        $gtin = Gtin14::encode($product['id']);
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/products/lookup/{$gtin}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $product['id']);
     }
 
     public function test_a_product_cannot_be_looked_up_by_unique_id_from_another_tenant(): void

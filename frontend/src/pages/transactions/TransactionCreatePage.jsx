@@ -139,6 +139,13 @@ export default function TransactionCreatePage() {
 
   const grandTotal = form.items.reduce((sum, i) => sum + i.product.unit_cost * i.qty, 0);
 
+  // ITF-14 encodes a GTIN-14 derived from the transaction's own id, which
+  // doesn't exist until it's actually saved — no preview until then.
+  const barcodePreviewUrl =
+    form.barcode_type && trxNumber
+      ? barcodeImageUrl(form.barcode_type, barcodePayload(form.barcode_type, trxNumber, transactionScanUrl(tenantId, trxNumber)))
+      : null;
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
@@ -475,15 +482,11 @@ export default function TransactionCreatePage() {
                 </option>
               ))}
             </Select>
-            {form.barcode_type && trxNumber && (
-              <img
-                src={barcodeImageUrl(
-                  form.barcode_type,
-                  barcodePayload(form.barcode_type, trxNumber, transactionScanUrl(tenantId, trxNumber)),
-                )}
-                alt="Preview barcode"
-                className="mt-3 h-16 rounded border border-border bg-white p-1"
-              />
+            {barcodePreviewUrl && (
+              <img src={barcodePreviewUrl} alt="Preview barcode" className="mt-3 h-16 rounded border border-border bg-white p-1" />
+            )}
+            {form.barcode_type === "itf14" && !barcodePreviewUrl && (
+              <p className="mt-2 text-xs text-ink-muted">Preview ITF-14 baru tersedia setelah transaksi disimpan.</p>
             )}
           </Card>
         )}

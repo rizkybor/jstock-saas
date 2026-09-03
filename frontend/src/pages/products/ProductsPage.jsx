@@ -148,7 +148,7 @@ export default function ProductsPage() {
   const barcodeUrlFor = (product) =>
     barcodeImageUrl(
       product.barcode_type,
-      barcodePayload(product.barcode_type, product.unique_id, productScanUrl(tenantId, product.unique_id)),
+      barcodePayload(product.barcode_type, product.unique_id, productScanUrl(tenantId, product.unique_id), product.id),
     );
 
   const handleDownloadLabel = async (product) => {
@@ -653,7 +653,12 @@ export default function ProductsPage() {
                   <img
                     src={barcodeImageUrl(
                       form.barcode_type,
-                      barcodePayload(form.barcode_type, form.unique_id, productScanUrl(tenantId, form.unique_id)),
+                      barcodePayload(
+                        form.barcode_type,
+                        form.unique_id,
+                        productScanUrl(tenantId, form.unique_id),
+                        editingProduct?.id,
+                      ),
                     )}
                     alt="Preview barcode"
                     className="mt-2 h-16 rounded border border-border bg-white p-1"
