@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Resources\TransactionResource;
+use App\Models\ApprovalStep;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Recipient;
 use App\Models\Sender;
 use App\Models\Transaction;
+use App\Models\TransactionApproval;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,10 +19,12 @@ use Illuminate\Validation\ValidationException;
 
 class TransactionController extends Controller
 {
+    private const WITH_RELATIONS = ['client', 'sender', 'recipient', 'currentApprovalStep', 'items.product', 'invoice', 'approvals.approver', 'approvals.approvalStep'];
+
     public function index(Request $request)
     {
         $transactions = Transaction::query()
-            ->with(['client', 'sender', 'recipient'])
+            ->with(['client', 'sender', 'recipient', 'currentApprovalStep'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
             ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')))
@@ -42,8 +46,9 @@ class TransactionController extends Controller
     public function store(StoreTransactionRequest $request)
     {
         $data = $request->validated();
+        $tenant = $request->user()->tenant;
 
-        $transaction = DB::transaction(function () use ($data) {
+        $transaction = DB::transaction(function () use ($data, $tenant) {
             $senderId = $data['sender_id'] ?? Sender::create(['name' => $data['sender_name']])->id;
 
             $recipientId = $data['recipient_id'] ?? Recipient::create([
@@ -78,24 +83,37 @@ class TransactionController extends Controller
                 ];
             }
 
+            // No approval flow configured (or the tenant skips approval
+            // entirely): first step, if any, otherwise straight to approved.
+            $firstStep = $tenant->requires_approval
+                ? ApprovalStep::where('tenant_id', $tenant->id)->orderBy('sequence')->first()
+                : null;
+
             $transaction = Transaction::create([
                 'trx_number' => $this->generateTrxNumber(),
                 'client_id' => $data['client_id'] ?? null,
                 'sender_id' => $senderId,
                 'recipient_id' => $recipientId,
                 'status' => 'pending',
+                'current_approval_step_id' => $firstStep?->id,
                 'total' => $total,
             ]);
 
             $transaction->items()->createMany($items);
+
+            if (! $tenant->requires_approval) {
+                $this->finalizeApproval($transaction, null);
+            }
 
             return $transaction;
         });
 
         return response()->json([
             'success' => true,
-            'data' => new TransactionResource($transaction->load(['client', 'sender', 'recipient', 'items.product'])),
-            'message' => 'Transaksi berhasil dibuat dan menunggu approval.',
+            'data' => new TransactionResource($transaction->load(self::WITH_RELATIONS)),
+            'message' => $transaction->status === 'approved'
+                ? 'Transaksi berhasil dibuat dan langsung disetujui (tenant ini tidak memakai approval).'
+                : 'Transaksi berhasil dibuat dan menunggu approval.',
         ], 201);
     }
 
@@ -103,7 +121,7 @@ class TransactionController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => new TransactionResource($transaction->load(['client', 'sender', 'recipient', 'items.product', 'invoice'])),
+            'data' => new TransactionResource($transaction->load(self::WITH_RELATIONS)),
             'message' => null,
         ]);
     }
@@ -112,32 +130,44 @@ class TransactionController extends Controller
     {
         abort_unless($transaction->status === 'pending', 422, 'Hanya transaksi berstatus pending yang bisa di-approve.');
 
-        $invoice = DB::transaction(function () use ($request, $transaction) {
-            $transaction->load('items.product');
+        $currentStep = $transaction->currentApprovalStep;
+        if ($currentStep) {
+            abort_unless($request->user()->role === $currentStep->role, 403, "Transaksi ini menunggu approval dari role \"{$currentStep->role}\".");
+        }
 
-            foreach ($transaction->items as $item) {
-                $item->product()->decrement('stock_qty', $item->qty);
-            }
-
-            $transaction->update([
-                'status' => 'approved',
-                'approved_by' => $request->user()->id,
-                'approved_at' => now(),
-            ]);
-
-            return Invoice::create([
+        DB::transaction(function () use ($request, $transaction, $currentStep) {
+            TransactionApproval::create([
                 'transaction_id' => $transaction->id,
-                'invoice_number' => 'INV-'.now()->format('Y').'-'.str_pad((string) $transaction->id, 4, '0', STR_PAD_LEFT),
+                'approval_step_id' => $currentStep?->id,
+                'approver_id' => $request->user()->id,
+                'decision' => 'approved',
             ]);
+
+            $nextStep = $currentStep
+                ? ApprovalStep::where('tenant_id', $transaction->tenant_id)
+                    ->where('sequence', '>', $currentStep->sequence)
+                    ->orderBy('sequence')
+                    ->first()
+                : null;
+
+            if ($nextStep) {
+                $transaction->update(['current_approval_step_id' => $nextStep->id]);
+            } else {
+                $this->finalizeApproval($transaction, $request->user()->id);
+            }
         });
+
+        $fresh = $transaction->fresh(self::WITH_RELATIONS);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'transaction' => new TransactionResource($transaction->fresh(['client', 'sender', 'recipient', 'items.product'])),
-                'invoice' => $invoice,
+                'transaction' => new TransactionResource($fresh),
+                'invoice' => $fresh->invoice,
             ],
-            'message' => 'Transaksi berhasil di-approve, invoice dibuat.',
+            'message' => $fresh->status === 'approved'
+                ? 'Transaksi berhasil di-approve, invoice dibuat.'
+                : "Approval tahap \"{$currentStep?->role}\" berhasil dicatat, menunggu tahap berikutnya.",
         ]);
     }
 
@@ -145,18 +175,34 @@ class TransactionController extends Controller
     {
         abort_unless($transaction->status === 'pending', 422, 'Hanya transaksi berstatus pending yang bisa di-reject.');
 
+        $currentStep = $transaction->currentApprovalStep;
+        if ($currentStep) {
+            abort_unless($request->user()->role === $currentStep->role, 403, "Transaksi ini menunggu approval dari role \"{$currentStep->role}\".");
+        }
+
         $data = $request->validate([
             'rejection_note' => ['required', 'string', 'max:500'],
         ]);
 
-        $transaction->update([
-            'status' => 'rejected',
-            'rejection_note' => $data['rejection_note'],
-        ]);
+        DB::transaction(function () use ($request, $transaction, $currentStep, $data) {
+            TransactionApproval::create([
+                'transaction_id' => $transaction->id,
+                'approval_step_id' => $currentStep?->id,
+                'approver_id' => $request->user()->id,
+                'decision' => 'rejected',
+                'note' => $data['rejection_note'],
+            ]);
+
+            $transaction->update([
+                'status' => 'rejected',
+                'rejection_note' => $data['rejection_note'],
+                'current_approval_step_id' => null,
+            ]);
+        });
 
         return response()->json([
             'success' => true,
-            'data' => new TransactionResource($transaction),
+            'data' => new TransactionResource($transaction->fresh(self::WITH_RELATIONS)),
             'message' => 'Transaksi ditolak.',
         ]);
     }
@@ -165,12 +211,38 @@ class TransactionController extends Controller
     {
         abort_unless($transaction->status === 'pending', 422, 'Hanya transaksi berstatus pending yang bisa dibatalkan.');
 
-        $transaction->update(['status' => 'cancelled']);
+        $transaction->update(['status' => 'cancelled', 'current_approval_step_id' => null]);
 
         return response()->json([
             'success' => true,
             'data' => null,
             'message' => 'Transaksi dibatalkan.',
+        ]);
+    }
+
+    /**
+     * Common end-of-chain effect, whether reached via the last approval
+     * step, a single legacy approve, or an auto-approve (no flow at all):
+     * deduct stock and issue the invoice.
+     */
+    private function finalizeApproval(Transaction $transaction, ?int $approverId): void
+    {
+        $transaction->load('items.product');
+
+        foreach ($transaction->items as $item) {
+            $item->product()->decrement('stock_qty', $item->qty);
+        }
+
+        $transaction->update([
+            'status' => 'approved',
+            'approved_by' => $approverId,
+            'approved_at' => now(),
+            'current_approval_step_id' => null,
+        ]);
+
+        Invoice::create([
+            'transaction_id' => $transaction->id,
+            'invoice_number' => 'INV-'.now()->format('Y').'-'.str_pad((string) $transaction->id, 4, '0', STR_PAD_LEFT),
         ]);
     }
 

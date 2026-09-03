@@ -22,6 +22,19 @@ class TransactionResource extends JsonResource
             'recipient' => $this->whenLoaded('recipient', fn () => $this->recipient?->only(['id', 'name', 'position', 'company'])),
             'items' => TransactionItemResource::collection($this->whenLoaded('items')),
             'invoice' => new InvoiceResource($this->whenLoaded('invoice')),
+            'pending_approval' => $this->whenLoaded(
+                'currentApprovalStep',
+                fn () => $this->currentApprovalStep
+                    ? ['role' => $this->currentApprovalStep->role, 'label' => $this->currentApprovalStep->label, 'sequence' => $this->currentApprovalStep->sequence]
+                    : null,
+            ),
+            'approvals' => $this->whenLoaded('approvals', fn () => $this->approvals->map(fn ($approval) => [
+                'decision' => $approval->decision,
+                'note' => $approval->note,
+                'approver_name' => $approval->approver?->name,
+                'role' => $approval->approvalStep?->role,
+                'created_at' => $approval->created_at,
+            ])),
             'rejection_note' => $this->rejection_note,
             'approved_at' => $this->approved_at,
             'created_at' => $this->created_at,

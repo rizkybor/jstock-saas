@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'tenant_id', 'trx_number', 'client_id', 'sender_id', 'recipient_id',
-    'status', 'total', 'approved_by', 'approved_at', 'rejection_note',
+    'status', 'current_approval_step_id', 'total', 'approved_by', 'approved_at', 'rejection_note',
 ])]
 class Transaction extends Model
 {
@@ -46,6 +46,16 @@ class Transaction extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function currentApprovalStep(): BelongsTo
+    {
+        return $this->belongsTo(ApprovalStep::class, 'current_approval_step_id');
+    }
+
+    public function approvals(): HasMany
+    {
+        return $this->hasMany(TransactionApproval::class)->latest();
     }
 
     public function items(): HasMany

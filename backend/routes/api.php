@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\ApprovalSettingsController as AdminApprovalSettingsController;
 use App\Http\Controllers\Api\Admin\ModuleController as AdminModuleController;
 use App\Http\Controllers\Api\Admin\RolePermissionController as AdminRolePermissionController;
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
@@ -79,6 +80,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tenants/{tenant}/users', [AdminUserController::class, 'store']);
         Route::put('/tenants/{tenant}/users/{user}', [AdminUserController::class, 'update']);
         Route::delete('/tenants/{tenant}/users/{user}', [AdminUserController::class, 'destroy']);
+
+        Route::get('/tenants/{tenant}/approval-settings', [AdminApprovalSettingsController::class, 'show']);
+        Route::put('/tenants/{tenant}/approval-settings', [AdminApprovalSettingsController::class, 'update']);
 
         Route::get('/permissions/catalog', [AdminRolePermissionController::class, 'catalog']);
         Route::get('/tenants/{tenant}/roles', [AdminRolePermissionController::class, 'index']);

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'slug', 'email', 'phone', 'address', 'logo_path', 'status', 'trial_ends_at'])]
+#[Fillable(['name', 'slug', 'email', 'phone', 'address', 'logo_path', 'status', 'trial_ends_at', 'requires_approval'])]
 class Tenant extends Model
 {
     use HasFactory;
@@ -20,6 +20,7 @@ class Tenant extends Model
     {
         return [
             'trial_ends_at' => 'datetime',
+            'requires_approval' => 'boolean',
         ];
     }
 
@@ -63,6 +64,11 @@ class Tenant extends Model
     public function hasModule(string $key): bool
     {
         return $this->modules()->where('key', $key)->exists();
+    }
+
+    public function approvalSteps(): HasMany
+    {
+        return $this->hasMany(ApprovalStep::class)->orderBy('sequence');
     }
 
     /**
