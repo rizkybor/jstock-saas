@@ -14,9 +14,10 @@ export function barcodeTypeLabel(type) {
   return BARCODE_TYPES.find((t) => t.value === type)?.label ?? type;
 }
 
-export function barcodeImageUrl(type, value) {
+export function barcodeImageUrl(type, value, dpi) {
   if (!type || !value) return null;
-  return `${BASE_URL}/${type}/${encodeURIComponent(value)}`;
+  const url = `${BASE_URL}/${type}/${encodeURIComponent(value)}`;
+  return dpi ? `${url}?dpi=${dpi}` : url;
 }
 
 export function productScanUrl(tenantId, uniqueId) {

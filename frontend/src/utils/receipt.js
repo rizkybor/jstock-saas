@@ -30,7 +30,7 @@ function wrapText(ctx, text, maxWidth) {
  * PDF/1.4 file: Catalog -> Pages -> one Page whose content stream just
  * paints the image across the full page.
  */
-function buildSingleImagePdf(jpegBytes, widthPx, heightPx) {
+function buildSingleImagePdf(jpegBytes, pageWidthPt, pageHeightPt, imagePixelWidth, imagePixelHeight) {
   const encoder = new TextEncoder();
   const chunks = [];
   const offsets = [];
@@ -60,17 +60,20 @@ function buildSingleImagePdf(jpegBytes, widthPx, heightPx) {
 
   beginObj(3);
   pushText(
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${widthPx} ${heightPx}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidthPt} ${pageHeightPt}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
   );
 
+  // /Width and /Height describe the JPEG's own pixel grid, which is denser
+  // than the page's point size below (see SCALE in downloadTransactionReceipt)
+  // — that's what makes the embedded image render sharp instead of blurry.
   beginObj(4);
   pushText(
-    `<< /Type /XObject /Subtype /Image /Width ${widthPx} /Height ${heightPx} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`,
+    `<< /Type /XObject /Subtype /Image /Width ${imagePixelWidth} /Height ${imagePixelHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`,
   );
   pushBytes(jpegBytes);
   pushText("\nendstream\nendobj\n");
 
-  const content = `q ${widthPx} 0 0 ${heightPx} 0 0 cm /Im0 Do Q`;
+  const content = `q ${pageWidthPt} 0 0 ${pageHeightPt} 0 0 cm /Im0 Do Q`;
   beginObj(5);
   pushText(`<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
 
@@ -113,13 +116,24 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
   const padding = 16;
   const contentWidth = width - padding * 2;
 
+  // Everything below is drawn in these logical (point-like) units — SCALE
+  // supersamples the actual canvas pixel grid so the exported PDF stays
+  // crisp instead of pixelated when zoomed or printed, without having to
+  // rewrite every coordinate/font-size below. The PDF page keeps the
+  // logical size in points; only the embedded image has SCALE× the pixels.
+  const SCALE = 3;
+
   // Content height varies with item count / address length — draw on a
   // generously tall scratch canvas first, then crop to what was actually
   // used. Sized off the item count so a long item list can't overflow it.
   const scratch = document.createElement("canvas");
-  scratch.width = width;
-  scratch.height = 400 + (transaction.items?.length ?? 0) * 30;
+  const scratchLogicalHeight = 400 + (transaction.items?.length ?? 0) * 30;
+  scratch.width = width * SCALE;
+  scratch.height = scratchLogicalHeight * SCALE;
   const ctx = scratch.getContext("2d");
+  ctx.scale(SCALE, SCALE);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   ctx.fillStyle = "#111827";
   ctx.fillRect(0, 0, width, 46);
@@ -150,6 +164,7 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
         transactionScanUrl(tenantId, transaction.trx_number),
         transaction.id,
       ),
+      300,
     );
     if (barcodeUrl) {
       try {
@@ -276,26 +291,31 @@ export async function downloadTransactionReceipt(transaction, { tenantId, tenant
   ctx.fillText(`Dicetak dari sistem ${tenantName || "jstock"} pada ${formatDateTime(new Date().toISOString())}`, padding, y);
   y += padding;
 
-  const finalHeight = y;
+  const finalLogicalHeight = y;
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = finalHeight;
+  canvas.width = width * SCALE;
+  canvas.height = finalLogicalHeight * SCALE;
   const finalCtx = canvas.getContext("2d");
+  finalCtx.scale(SCALE, SCALE);
   finalCtx.fillStyle = "#ffffff";
-  finalCtx.fillRect(0, 0, width, finalHeight);
-  finalCtx.drawImage(scratch, 0, 0, width, finalHeight, 0, 0, width, finalHeight);
+  finalCtx.fillRect(0, 0, width, finalLogicalHeight);
+  // Source rect is in the scratch canvas's real pixel grid (SCALE× the
+  // logical size); destination rect is in this context's logical units,
+  // which its own scale(SCALE, SCALE) maps onto the same dense pixel grid.
+  finalCtx.drawImage(scratch, 0, 0, width * SCALE, finalLogicalHeight * SCALE, 0, 0, width, finalLogicalHeight);
   finalCtx.strokeStyle = "#d0d5dd";
   finalCtx.lineWidth = 2;
-  finalCtx.strokeRect(1, 1, width - 2, finalHeight - 2);
+  finalCtx.strokeRect(1, 1, width - 2, finalLogicalHeight - 2);
 
   // The on-screen barcode stays a plain PNG <img> — only the downloaded
   // resi itself is a PDF, wrapping a high-quality JPEG rendering of the
-  // same canvas (see buildSingleImagePdf).
+  // same canvas (see buildSingleImagePdf). Quality 0.98 plus the SCALE
+  // supersampling above is what keeps the exported PDF sharp.
   const jpegBlob = await new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Gagal membuat resi."))), "image/jpeg", 0.95);
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Gagal membuat resi."))), "image/jpeg", 0.98);
   });
   const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
-  const pdfBytes = buildSingleImagePdf(jpegBytes, width, finalHeight);
+  const pdfBytes = buildSingleImagePdf(jpegBytes, width, finalLogicalHeight, canvas.width, canvas.height);
 
   const url = URL.createObjectURL(new Blob([pdfBytes], { type: "application/pdf" }));
   const a = document.createElement("a");
