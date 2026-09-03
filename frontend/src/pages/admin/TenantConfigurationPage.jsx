@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Skeleton, Tabs } from "../../components/ui";
+import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Skeleton, Tabs } from "../../components/ui";
 import { hasErrors, validate } from "../../utils/validate";
 
 const PROFILE_RULES = [{ name: "name", label: "Nama Perusahaan", required: true }];
@@ -78,6 +78,7 @@ export default function TenantConfigurationPage() {
   const [savingRole, setSavingRole] = useState(false);
   const [resettingRole, setResettingRole] = useState(false);
   const [roleMessage, setRoleMessage] = useState(null);
+  const [confirmResetRole, setConfirmResetRole] = useState(false);
 
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -89,6 +90,7 @@ export default function TenantConfigurationPage() {
   const [userFormError, setUserFormError] = useState(null);
   const [savingUser, setSavingUser] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
 
   const [requiresApproval, setRequiresApproval] = useState(true);
   const [approvalSteps, setApprovalSteps] = useState([]);
@@ -278,12 +280,12 @@ export default function TenantConfigurationPage() {
   };
 
   const resetRolePermissions = async () => {
-    if (!confirm(`Kembalikan role "${ROLE_LABELS[selectedRole] ?? selectedRole}" ke default platform?`)) return;
     setRoleError(null);
     setRoleMessage(null);
     setResettingRole(true);
     try {
       await apiClient.delete(`/admin/tenants/${tenantToken}/roles/${selectedRole}`);
+      setConfirmResetRole(false);
       await loadRoles();
       setRoleMessage({
         tone: "success",
@@ -456,12 +458,13 @@ export default function TenantConfigurationPage() {
     }
   };
 
-  const handleDeleteUser = async (user) => {
-    if (!confirm(`Hapus akun "${user.name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+  const handleDeleteUser = async () => {
+    const user = confirmDeleteUser;
     setUsersError(null);
     setDeletingUserId(user.id);
     try {
       await apiClient.delete(`/admin/tenants/${tenantToken}/users/${user.id}`);
+      setConfirmDeleteUser(null);
       await Promise.all([loadUsers(), loadRoles()]);
     } catch (err) {
       setUsersError(err.response?.data?.message ?? "Gagal menghapus akun pengguna.");
@@ -760,7 +763,7 @@ export default function TenantConfigurationPage() {
                           variant="danger"
                           size="sm"
                           loading={deletingUserId === row.id}
-                          onClick={() => handleDeleteUser(row)}
+                          onClick={() => setConfirmDeleteUser(row)}
                         >
                           Hapus
                         </Button>
@@ -932,7 +935,7 @@ export default function TenantConfigurationPage() {
                     <Button onClick={saveRolePermissions} loading={savingRole}>
                       {savingRole ? "Menyimpan..." : "Simpan"}
                     </Button>
-                    <Button variant="secondary" onClick={resetRolePermissions} loading={resettingRole} disabled={!currentRole?.is_custom}>
+                    <Button variant="secondary" onClick={() => setConfirmResetRole(true)} loading={resettingRole} disabled={!currentRole?.is_custom}>
                       Reset ke Default
                     </Button>
                   </div>
@@ -1074,6 +1077,28 @@ export default function TenantConfigurationPage() {
             </div>
           )}
         </>
+      )}
+
+      {confirmDeleteUser && (
+        <ConfirmDialog
+          title="Hapus Akun"
+          description={`Hapus akun "${confirmDeleteUser.name}"? Tindakan ini tidak bisa dibatalkan.`}
+          confirmLabel="Hapus"
+          loading={deletingUserId === confirmDeleteUser.id}
+          onConfirm={handleDeleteUser}
+          onCancel={() => setConfirmDeleteUser(null)}
+        />
+      )}
+
+      {confirmResetRole && (
+        <ConfirmDialog
+          title="Reset ke Default"
+          description={`Kembalikan role "${ROLE_LABELS[selectedRole] ?? selectedRole}" ke default platform?`}
+          confirmLabel="Reset"
+          loading={resettingRole}
+          onConfirm={resetRolePermissions}
+          onCancel={() => setConfirmResetRole(false)}
+        />
       )}
     </div>
   );

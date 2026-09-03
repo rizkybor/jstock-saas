@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
+import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
@@ -51,6 +51,7 @@ export default function ProductsPage() {
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const [search, setSearch] = useState("");
   const [seriesFilter, setSeriesFilter] = useState("");
@@ -205,11 +206,12 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Hapus barang ini? Tindakan ini tidak bisa dibatalkan.")) return;
-    setDeletingId(id);
+  const handleDelete = async () => {
+    const product = confirmDelete;
+    setDeletingId(product.id);
     try {
-      await apiClient.delete(`/products/${id}`);
+      await apiClient.delete(`/products/${product.id}`);
+      setConfirmDelete(null);
       await loadProducts(meta.current_page);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal menghapus barang.");
@@ -249,7 +251,7 @@ export default function ProductsPage() {
             </Button>
           </Can>
           <Can permission="products.delete">
-            <Button variant="danger" size="sm" loading={deletingId === row.id} onClick={() => handleDelete(row.id)}>
+            <Button variant="danger" size="sm" loading={deletingId === row.id} onClick={() => setConfirmDelete(row)}>
               Hapus
             </Button>
           </Can>
@@ -597,6 +599,17 @@ export default function ProductsPage() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Hapus Barang"
+          description={`Hapus "${confirmDelete.name}"? Tindakan ini tidak bisa dibatalkan.`}
+          confirmLabel="Hapus"
+          loading={deletingId === confirmDelete.id}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   );

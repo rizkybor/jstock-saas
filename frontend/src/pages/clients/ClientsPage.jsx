@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, DataTable, Input, Modal, PageHeader, Pagination, Select } from "../../components/ui";
+import { Alert, Badge, Button, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
@@ -20,6 +20,7 @@ export default function ClientsPage() {
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [statusBusyId, setStatusBusyId] = useState(null);
+  const [confirmToggle, setConfirmToggle] = useState(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -107,9 +108,9 @@ export default function ClientsPage() {
     }
   };
 
-  const handleToggleStatus = async (client) => {
+  const handleToggleStatus = async () => {
+    const client = confirmToggle;
     const activating = !client.is_active;
-    if (!confirm(activating ? `Aktifkan klien "${client.company_name}"?` : `Nonaktifkan klien "${client.company_name}"?`)) return;
 
     setStatusBusyId(client.id);
     try {
@@ -118,6 +119,7 @@ export default function ClientsPage() {
       } else {
         await apiClient.delete(`/clients/${client.id}`);
       }
+      setConfirmToggle(null);
       await loadClients(meta.current_page);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal memperbarui status klien.");
@@ -154,7 +156,7 @@ export default function ClientsPage() {
               variant={row.is_active ? "danger" : "success"}
               size="sm"
               loading={statusBusyId === row.id}
-              onClick={() => handleToggleStatus(row)}
+              onClick={() => setConfirmToggle(row)}
             >
               {row.is_active ? "Nonaktifkan" : "Aktifkan"}
             </Button>
@@ -278,6 +280,18 @@ export default function ClientsPage() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmToggle && (
+        <ConfirmDialog
+          title={confirmToggle.is_active ? "Nonaktifkan Klien" : "Aktifkan Klien"}
+          description={`${confirmToggle.is_active ? "Nonaktifkan" : "Aktifkan"} klien "${confirmToggle.company_name}"?`}
+          confirmLabel={confirmToggle.is_active ? "Nonaktifkan" : "Aktifkan"}
+          variant={confirmToggle.is_active ? "danger" : "success"}
+          loading={statusBusyId === confirmToggle.id}
+          onConfirm={handleToggleStatus}
+          onCancel={() => setConfirmToggle(null)}
+        />
       )}
     </div>
   );

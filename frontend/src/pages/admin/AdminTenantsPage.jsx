@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, DataTable, GearIcon, Input, Modal, PageHeader, Pagination, Select, StatTile } from "../../components/ui";
+import { Alert, Badge, Button, ConfirmDialog, DataTable, GearIcon, Input, Modal, PageHeader, Pagination, Select, StatTile } from "../../components/ui";
 import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_TENANT_FORM = {
@@ -37,6 +37,7 @@ export default function AdminTenantsPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [statusBusyToken, setStatusBusyToken] = useState(null);
+  const [confirmToggle, setConfirmToggle] = useState(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -87,18 +88,15 @@ export default function AdminTenantsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const toggleStatus = async (tenant) => {
+  const toggleStatus = async () => {
+    const tenant = confirmToggle;
     const action = tenant.status === "suspended" ? "activate" : "suspend";
-    const confirmMessage =
-      action === "suspend"
-        ? `Suspend tenant "${tenant.name}"? Semua user di tenant ini tidak akan bisa login.`
-        : `Aktifkan kembali tenant "${tenant.name}"?`;
-    if (!confirm(confirmMessage)) return;
 
     setError(null);
     setStatusBusyToken(tenant.token);
     try {
       await apiClient.patch(`/admin/tenants/${tenant.token}/${action}`);
+      setConfirmToggle(null);
       await Promise.all([loadTenants(meta.current_page), loadStats()]);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal memperbarui status tenant.");
@@ -179,7 +177,7 @@ export default function AdminTenantsPage() {
             variant={row.status === "suspended" ? "primary" : "danger"}
             size="sm"
             loading={statusBusyToken === row.token}
-            onClick={() => toggleStatus(row)}
+            onClick={() => setConfirmToggle(row)}
           >
             {row.status === "suspended" ? "Aktifkan" : "Suspend"}
           </Button>
@@ -360,6 +358,22 @@ export default function AdminTenantsPage() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmToggle && (
+        <ConfirmDialog
+          title={confirmToggle.status === "suspended" ? "Aktifkan Tenant" : "Suspend Tenant"}
+          description={
+            confirmToggle.status === "suspended"
+              ? `Aktifkan kembali tenant "${confirmToggle.name}"?`
+              : `Suspend tenant "${confirmToggle.name}"? Semua user di tenant ini tidak akan bisa login.`
+          }
+          confirmLabel={confirmToggle.status === "suspended" ? "Aktifkan" : "Suspend"}
+          variant={confirmToggle.status === "suspended" ? "success" : "danger"}
+          loading={statusBusyToken === confirmToggle.token}
+          onConfirm={toggleStatus}
+          onCancel={() => setConfirmToggle(null)}
+        />
       )}
     </div>
   );
