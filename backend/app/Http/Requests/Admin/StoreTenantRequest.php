@@ -35,7 +35,8 @@ class StoreTenantRequest extends FormRequest
             'owner_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'owner_password' => ['required', 'string', 'min:8'],
 
-            'module_ids' => ['nullable', 'array'],
+            // A tenant may only have one module active at a time.
+            'module_ids' => ['nullable', 'array', 'max:1'],
             'module_ids.*' => ['integer', Rule::exists('modules', 'id')],
         ];
     }

@@ -120,6 +120,21 @@ class ModuleManagementTest extends TestCase
         $this->actingAs($owner, 'sanctum')->getJson('/api/clients')->assertStatus(403);
     }
 
+    public function test_attaching_a_module_detaches_any_other_module_the_tenant_had(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $moduleA = Module::create(['key' => 'inventory-gas-kalibrasi', 'name' => 'Inventory Gas Kalibrasi']);
+        $moduleB = Module::create(['key' => 'warehouse-general', 'name' => 'Warehouse General']);
+        $tenant->modules()->attach($moduleA->id);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/admin/tenants/{$tenant->token}/modules/{$moduleB->id}")
+            ->assertOk();
+
+        $this->assertSame(['warehouse-general'], $tenant->modules()->pluck('key')->all());
+    }
+
     public function test_a_suspended_tenants_existing_token_can_no_longer_reach_module_routes(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'active']);

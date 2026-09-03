@@ -172,9 +172,14 @@ class TenantController extends Controller
         ]);
     }
 
+    /**
+     * A tenant may only have one module active at a time — sync() (not
+     * syncWithoutDetaching) replaces whatever was attached, so switching
+     * to a new module always detaches the previous one in the same call.
+     */
     public function attachModule(Tenant $tenant, Module $module)
     {
-        $tenant->modules()->syncWithoutDetaching([$module->id]);
+        $tenant->modules()->sync([$module->id]);
 
         return response()->json([
             'success' => true,

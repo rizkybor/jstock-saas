@@ -316,19 +316,32 @@ export default function TenantConfigurationPage() {
     }
   };
 
-  const toggleModule = async (module) => {
+  // A tenant may only have one module active at a time — selecting a
+  // module attaches it and the backend detaches whatever was active
+  // before, in the same call. "Nonaktifkan" is the only way to reach
+  // zero modules.
+  const selectModule = async (module) => {
     setModuleError(null);
     setModuleBusyId(module.id);
     try {
-      if (module.enabled) {
-        await apiClient.delete(`/admin/tenants/${tenantToken}/modules/${module.id}`);
-      } else {
-        await apiClient.post(`/admin/tenants/${tenantToken}/modules/${module.id}`);
-        await loadMenuSettings(module);
-      }
-      setCatalogModules((list) => list.map((m) => (m.id === module.id ? { ...m, enabled: !m.enabled } : m)));
+      await apiClient.post(`/admin/tenants/${tenantToken}/modules/${module.id}`);
+      await loadMenuSettings(module);
+      setCatalogModules((list) => list.map((m) => ({ ...m, enabled: m.id === module.id })));
     } catch (err) {
       setModuleError(err.response?.data?.message ?? "Gagal memperbarui modul.");
+    } finally {
+      setModuleBusyId(null);
+    }
+  };
+
+  const deactivateModule = async (module) => {
+    setModuleError(null);
+    setModuleBusyId(module.id);
+    try {
+      await apiClient.delete(`/admin/tenants/${tenantToken}/modules/${module.id}`);
+      setCatalogModules((list) => list.map((m) => (m.id === module.id ? { ...m, enabled: false } : m)));
+    } catch (err) {
+      setModuleError(err.response?.data?.message ?? "Gagal menonaktifkan modul.");
     } finally {
       setModuleBusyId(null);
     }
@@ -836,7 +849,8 @@ export default function TenantConfigurationPage() {
           {tab === "modules" && (
             <div className="max-w-xl">
               <p className="mb-4 text-sm text-ink-muted">
-                Aktifkan modul untuk tenant ini, lalu atur menu mana saja dari modul tersebut yang boleh diakses.
+                Setiap tenant hanya bisa memiliki 1 modul aktif. Pilih modul untuk tenant ini, lalu atur menu mana saja
+                dari modul tersebut yang boleh diakses.
               </p>
 
               {moduleError && (
@@ -860,19 +874,32 @@ export default function TenantConfigurationPage() {
                 <div className="flex flex-col gap-2">
                   {catalogModules.map((module) => (
                     <div key={module.id} className="rounded-lg border border-border">
-                      <label className="flex cursor-pointer items-start gap-3 p-3 hover:bg-surface-2">
-                        <input
-                          type="checkbox"
-                          checked={module.enabled}
-                          disabled={moduleBusyId === module.id}
-                          onChange={() => toggleModule(module)}
-                          className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
-                        />
-                        <div>
-                          <div className="text-sm font-semibold text-ink">{module.name}</div>
-                          {module.description && <div className="text-xs text-ink-muted">{module.description}</div>}
-                        </div>
-                      </label>
+                      <div className="flex items-start gap-3 p-3 hover:bg-surface-2">
+                        <label className="flex flex-1 cursor-pointer items-start gap-3">
+                          <input
+                            type="radio"
+                            name="tenant-module"
+                            checked={module.enabled}
+                            disabled={moduleBusyId === module.id}
+                            onChange={() => selectModule(module)}
+                            className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
+                          />
+                          <div>
+                            <div className="text-sm font-semibold text-ink">{module.name}</div>
+                            {module.description && <div className="text-xs text-ink-muted">{module.description}</div>}
+                          </div>
+                        </label>
+                        {module.enabled && (
+                          <button
+                            type="button"
+                            disabled={moduleBusyId === module.id}
+                            onClick={() => deactivateModule(module)}
+                            className="cursor-pointer text-xs font-medium text-danger-solid hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Nonaktifkan
+                          </button>
+                        )}
+                      </div>
 
                       {module.enabled && menuSettings[module.id] && (
                         <div className="border-t border-border bg-surface-2 p-3 pl-10">
