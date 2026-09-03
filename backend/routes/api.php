@@ -19,6 +19,12 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SenderController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\Warehouse\ItemController as WarehouseItemController;
+use App\Http\Controllers\Api\Warehouse\LocationController as WarehouseLocationController;
+use App\Http\Controllers\Api\Warehouse\PurchaseOrderController as WarehousePurchaseOrderController;
+use App\Http\Controllers\Api\Warehouse\StockController as WarehouseStockController;
+use App\Http\Controllers\Api\Warehouse\StockOpnameController as WarehouseStockOpnameController;
+use App\Http\Controllers\Api\Warehouse\SupplierController as WarehouseSupplierController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', fn () => response()->json(['success' => true, 'message' => 'pong']));
@@ -84,6 +90,51 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/transactions/{transaction}/reject', [TransactionController::class, 'reject'])->middleware('permission:transactions.approve');
             Route::patch('/transactions/{transaction}/ship', [TransactionController::class, 'markShipped'])->middleware('permission:transactions.approve');
             Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->middleware('permission:transactions.delete');
+        });
+    });
+
+    // "Warehouse General" module — a separate business process (basic item
+    // master, multi-location stock, transfers, purchase orders, stock
+    // opname) from Inventory Gas Kalibrasi above; entirely gated behind its
+    // own module:<key>, side by side with it.
+    Route::prefix('warehouse')->middleware('module:warehouse-general')->group(function () {
+        Route::middleware('menu:warehouse-general,locations')->group(function () {
+            Route::get('/locations', [WarehouseLocationController::class, 'index'])->middleware('permission:warehouse-locations.view');
+            Route::post('/locations', [WarehouseLocationController::class, 'store'])->middleware('permission:warehouse-locations.create');
+            Route::put('/locations/{location}', [WarehouseLocationController::class, 'update'])->middleware('permission:warehouse-locations.update');
+            Route::delete('/locations/{location}', [WarehouseLocationController::class, 'destroy'])->middleware('permission:warehouse-locations.delete');
+        });
+
+        Route::middleware('menu:warehouse-general,items')->group(function () {
+            Route::get('/items', [WarehouseItemController::class, 'index'])->middleware('permission:warehouse-items.view');
+            Route::post('/items', [WarehouseItemController::class, 'store'])->middleware('permission:warehouse-items.create');
+            Route::get('/items/{item}', [WarehouseItemController::class, 'show'])->middleware('permission:warehouse-items.view');
+            Route::put('/items/{item}', [WarehouseItemController::class, 'update'])->middleware('permission:warehouse-items.update');
+            Route::delete('/items/{item}', [WarehouseItemController::class, 'destroy'])->middleware('permission:warehouse-items.delete');
+        });
+
+        Route::middleware('menu:warehouse-general,stock')->group(function () {
+            Route::get('/stock', [WarehouseStockController::class, 'index'])->middleware('permission:warehouse-stock.view');
+            Route::get('/stock/movements', [WarehouseStockController::class, 'movements'])->middleware('permission:warehouse-stock.view');
+            Route::post('/stock/move', [WarehouseStockController::class, 'move'])->middleware('permission:warehouse-stock.move');
+            Route::post('/stock/transfer', [WarehouseStockController::class, 'transfer'])->middleware('permission:warehouse-stock.move');
+        });
+
+        Route::middleware('menu:warehouse-general,purchase-orders')->group(function () {
+            Route::get('/suppliers', [WarehouseSupplierController::class, 'index'])->middleware('permission:warehouse-suppliers.view');
+            Route::post('/suppliers', [WarehouseSupplierController::class, 'store'])->middleware('permission:warehouse-suppliers.create');
+            Route::put('/suppliers/{supplier}', [WarehouseSupplierController::class, 'update'])->middleware('permission:warehouse-suppliers.update');
+            Route::delete('/suppliers/{supplier}', [WarehouseSupplierController::class, 'destroy'])->middleware('permission:warehouse-suppliers.delete');
+
+            Route::get('/purchase-orders', [WarehousePurchaseOrderController::class, 'index'])->middleware('permission:warehouse-purchase-orders.view');
+            Route::post('/purchase-orders', [WarehousePurchaseOrderController::class, 'store'])->middleware('permission:warehouse-purchase-orders.create');
+            Route::get('/purchase-orders/{purchaseOrder}', [WarehousePurchaseOrderController::class, 'show'])->middleware('permission:warehouse-purchase-orders.view');
+            Route::patch('/purchase-orders/{purchaseOrder}/receive', [WarehousePurchaseOrderController::class, 'receive'])->middleware('permission:warehouse-purchase-orders.receive');
+        });
+
+        Route::middleware('menu:warehouse-general,stock-opname')->group(function () {
+            Route::get('/stock-opname', [WarehouseStockOpnameController::class, 'index'])->middleware('permission:warehouse-stock.view');
+            Route::post('/stock-opname', [WarehouseStockOpnameController::class, 'store'])->middleware('permission:warehouse-stock.opname');
         });
     });
 

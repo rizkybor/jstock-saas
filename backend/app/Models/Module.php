@@ -25,6 +25,13 @@ class Module extends Model
             'transactions' => 'Transaksi',
             'reports' => 'Laporan',
         ],
+        'warehouse-general' => [
+            'locations' => 'Gudang & Rak',
+            'items' => 'Data Barang Gudang',
+            'stock' => 'Stok Masuk & Keluar',
+            'purchase-orders' => 'Purchase Order',
+            'stock-opname' => 'Stock Opname',
+        ],
     ];
 
     protected function casts(): array

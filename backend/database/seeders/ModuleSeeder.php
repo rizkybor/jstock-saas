@@ -17,5 +17,14 @@ class ModuleSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        Module::updateOrCreate(
+            ['key' => 'warehouse-general'],
+            [
+                'name' => 'Warehouse General',
+                'description' => 'Barang gudang umum, lokasi/rak, stok masuk-keluar, transfer antar lokasi, purchase order, dan stock opname.',
+                'is_active' => true,
+            ]
+        );
     }
 }

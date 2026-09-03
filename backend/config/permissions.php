@@ -17,6 +17,11 @@ return [
         'signatures.view', 'signatures.create', 'signatures.update', 'signatures.delete',
         'reports.view', 'reports.cogs',
         'dashboard.view',
+        'warehouse-locations.view', 'warehouse-locations.create', 'warehouse-locations.update', 'warehouse-locations.delete',
+        'warehouse-items.view', 'warehouse-items.create', 'warehouse-items.update', 'warehouse-items.delete',
+        'warehouse-stock.view', 'warehouse-stock.move', 'warehouse-stock.opname',
+        'warehouse-suppliers.view', 'warehouse-suppliers.create', 'warehouse-suppliers.update', 'warehouse-suppliers.delete',
+        'warehouse-purchase-orders.view', 'warehouse-purchase-orders.create', 'warehouse-purchase-orders.receive',
     ],
     'manager' => [
         'tenant.view',
@@ -30,6 +35,11 @@ return [
         'signatures.view',
         'reports.view', 'reports.cogs',
         'dashboard.view',
+        'warehouse-locations.view', 'warehouse-locations.create', 'warehouse-locations.update', 'warehouse-locations.delete',
+        'warehouse-items.view', 'warehouse-items.create', 'warehouse-items.update', 'warehouse-items.delete',
+        'warehouse-stock.view', 'warehouse-stock.move', 'warehouse-stock.opname',
+        'warehouse-suppliers.view', 'warehouse-suppliers.create', 'warehouse-suppliers.update', 'warehouse-suppliers.delete',
+        'warehouse-purchase-orders.view', 'warehouse-purchase-orders.create', 'warehouse-purchase-orders.receive',
     ],
     'operator' => [
         'clients.view', 'clients.create',
@@ -39,6 +49,11 @@ return [
         'invoices.download',
         'reports.view',
         'dashboard.view',
+        'warehouse-locations.view',
+        'warehouse-items.view', 'warehouse-items.create',
+        'warehouse-stock.view', 'warehouse-stock.move',
+        'warehouse-suppliers.view',
+        'warehouse-purchase-orders.view', 'warehouse-purchase-orders.create',
     ],
     'viewer' => [
         'clients.view',
@@ -48,6 +63,11 @@ return [
         'invoices.download',
         'reports.view',
         'dashboard.view',
+        'warehouse-locations.view',
+        'warehouse-items.view',
+        'warehouse-stock.view',
+        'warehouse-suppliers.view',
+        'warehouse-purchase-orders.view',
     ],
     // Super admin operates at platform level, not tenant level — the
     // wildcard is resolved by User::hasPermission().
