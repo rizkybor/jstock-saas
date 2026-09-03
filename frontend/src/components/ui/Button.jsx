@@ -8,8 +8,8 @@ const VARIANTS = {
 };
 
 const SIZES = {
-  sm: "text-xs px-3 py-1.5",
-  md: "text-[15px] px-[18px] py-2.5",
+  sm: "h-8 text-xs px-3",
+  md: "h-10 text-[15px] px-[18px]",
 };
 
 function Spinner() {

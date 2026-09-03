@@ -13,7 +13,7 @@ export default function Input({ label, error, hint, className = "", id, ...props
       )}
       <input
         id={inputId}
-        className={`h-10 rounded border bg-surface px-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,117,222,0.12)] ${
+        className={`h-10 rounded-lg border bg-surface px-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,117,222,0.12)] ${
           error ? "border-danger" : "border-border focus:border-primary"
         } ${className}`}
         {...props}

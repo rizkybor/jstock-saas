@@ -584,7 +584,7 @@ export default function TenantConfigurationPage() {
                         <select
                           value={planForm.plan_id}
                           onChange={(e) => setPlanForm({ ...planForm, plan_id: e.target.value })}
-                          className="h-10 min-w-0 flex-1 rounded border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+                          className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
                         >
                           <option value="">Pilih plan</option>
                           {plans.map((p) => (
@@ -649,7 +649,7 @@ export default function TenantConfigurationPage() {
                         <select
                           value={planForm.status}
                           onChange={(e) => setPlanForm({ ...planForm, status: e.target.value })}
-                          className="h-10 w-full rounded border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+                          className="h-10 w-full rounded-lg border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
                         >
                           {Object.entries(SUBSCRIPTION_STATUS_LABELS).map(([value, label]) => (
                             <option key={value} value={value}>
@@ -996,7 +996,7 @@ export default function TenantConfigurationPage() {
                               <select
                                 value={step.role}
                                 onChange={(e) => updateApprovalStep(index, { role: e.target.value })}
-                                className="h-10 min-w-0 flex-1 rounded border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+                                className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
                               >
                                 <option value="">Pilih role</option>
                                 {roles.map((r) => (
@@ -1010,7 +1010,7 @@ export default function TenantConfigurationPage() {
                                 placeholder="Label tahap (opsional)"
                                 value={step.label}
                                 onChange={(e) => updateApprovalStep(index, { label: e.target.value })}
-                                className="h-10 min-w-0 flex-1 rounded border border-border bg-surface px-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,117,222,0.12)]"
+                                className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,117,222,0.12)]"
                               />
                               <div className="flex shrink-0 gap-1">
                                 <Button
