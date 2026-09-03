@@ -4,7 +4,7 @@ import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
-import { BARCODE_TYPES, barcodeImageUrl, barcodePayload, barcodeTypeLabel, productScanUrl } from "../../utils/barcode";
+import { BARCODE_TYPES, barcodeImageUrl, barcodePayload, downloadBarcodeLabel, productScanUrl } from "../../utils/barcode";
 import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_CREATE_FORM = {
@@ -47,7 +47,7 @@ const seriesBadgeTone = (name = "") => {
 };
 
 export default function ProductsPage() {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const { tenantId } = useParams();
   const [products, setProducts] = useState([]);
   const [series, setSeries] = useState([]);
@@ -72,6 +72,7 @@ export default function ProductsPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [downloadingLabel, setDownloadingLabel] = useState(false);
 
   const loadProducts = async (page = 1) => {
     setLoading(true);
@@ -141,6 +142,32 @@ export default function ProductsPage() {
       setScanError("Barang dengan ID unik tersebut tidak ditemukan.");
     } finally {
       setScanning(false);
+    }
+  };
+
+  const barcodeUrlFor = (product) =>
+    barcodeImageUrl(
+      product.barcode_type,
+      barcodePayload(product.barcode_type, product.unique_id, productScanUrl(tenantId, product.unique_id)),
+    );
+
+  const handleDownloadLabel = async (product) => {
+    setDownloadingLabel(true);
+    try {
+      await downloadBarcodeLabel({
+        barcodeUrl: barcodeUrlFor(product),
+        lines: [
+          product.name,
+          `Jenis Gas: ${product.series?.name ?? "-"}`,
+          `LOT/Batch: ${product.lot_batch ?? "-"}`,
+          `ID Unik: ${product.unique_id ?? "-"}`,
+        ],
+        fileName: `label-${product.unique_id ?? product.id}.png`,
+      });
+    } catch {
+      setError("Gagal mengunduh label barcode.");
+    } finally {
+      setDownloadingLabel(false);
     }
   };
 
@@ -759,24 +786,34 @@ export default function ProductsPage() {
 
             {detailProduct.barcode_type && detailProduct.unique_id && (
               <div className="rounded-lg border border-border bg-surface-2 p-3">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                  Barcode — {barcodeTypeLabel(detailProduct.barcode_type)}
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Product Unique</div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    loading={downloadingLabel}
+                    onClick={() => handleDownloadLabel(detailProduct)}
+                  >
+                    Download
+                  </Button>
                 </div>
-                <img
-                  src={barcodeImageUrl(
-                    detailProduct.barcode_type,
-                    barcodePayload(
-                      detailProduct.barcode_type,
-                      detailProduct.unique_id,
-                      productScanUrl(tenantId, detailProduct.unique_id),
-                    ),
-                  )}
-                  alt="Barcode"
-                  className="h-20 rounded bg-white p-2"
-                />
-                <p className="mt-2 text-xs text-ink-muted">
-                  QR Code membuka halaman detail ini langsung saat discan. Tipe lain dapat dipindai ke kolom "Scan
-                  barcode / ID Unik barang" di atas.
+                <div className="flex items-center gap-4">
+                  <img src={barcodeUrlFor(detailProduct)} alt="Barcode" className="h-20 shrink-0 rounded bg-white p-2" />
+                  <div className="text-sm text-ink">
+                    <div>
+                      <span className="text-ink-muted">Jenis Gas:</span> {detailProduct.series?.name ?? "-"}
+                    </div>
+                    <div>
+                      <span className="text-ink-muted">LOT/Batch:</span> {detailProduct.lot_batch ?? "-"}
+                    </div>
+                    <div>
+                      <span className="text-ink-muted">ID Unik:</span> {detailProduct.unique_id}
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-ink-muted">
+                  Produk ini asli, diproduksi oleh {user?.tenant_name ?? "tenant terverifikasi"}.
                 </p>
               </div>
             )}

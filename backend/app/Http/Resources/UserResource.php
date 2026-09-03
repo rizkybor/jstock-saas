@@ -22,6 +22,7 @@ class UserResource extends JsonResource
             // Encrypted, not the raw tenant id — the frontend uses this for
             // its /:tenantToken/... routes and never sees the real id.
             'tenant_token' => $this->tenant_id ? TenantToken::encode($this->tenant_id) : null,
+            'tenant_name' => $this->tenant?->name,
             'permissions' => $this->permissions(),
         ];
     }

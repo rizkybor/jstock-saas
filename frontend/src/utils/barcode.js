@@ -37,3 +37,67 @@ export function transactionScanUrl(tenantId, trxNumber) {
 export function barcodePayload(type, rawValue, scanUrl) {
   return type === "qr" ? scanUrl : rawValue;
 }
+
+/**
+ * Renders the barcode image plus a few label lines onto a canvas and
+ * downloads it as a PNG — meant to be printed as a sticker label on the
+ * physical product/package. barcodeapi.org sends
+ * Access-Control-Allow-Origin: *, so the image can be drawn onto canvas
+ * (crossOrigin="anonymous") without tainting it.
+ */
+export function downloadBarcodeLabel({ barcodeUrl, lines, fileName }) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = () => {
+      const padding = 16;
+      const barcodeBox = 160;
+      const lineHeight = 24;
+      const textAreaWidth = 260;
+      const canvas = document.createElement("canvas");
+      canvas.width = padding * 3 + barcodeBox + textAreaWidth;
+      canvas.height = Math.max(barcodeBox, lines.length * lineHeight) + padding * 2;
+
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#d0d5dd";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+
+      const scale = Math.min(barcodeBox / img.width, barcodeBox / img.height);
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      ctx.drawImage(img, padding + (barcodeBox - drawW) / 2, (canvas.height - drawH) / 2, drawW, drawH);
+
+      ctx.fillStyle = "#111827";
+      const textX = padding * 2 + barcodeBox;
+      let y = padding + 18;
+      lines.forEach((line, i) => {
+        ctx.font = i === 0 ? "700 16px sans-serif" : "400 14px sans-serif";
+        ctx.fillText(line, textX, y, textAreaWidth);
+        y += lineHeight;
+      });
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Gagal membuat gambar label."));
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        resolve();
+      }, "image/png");
+    };
+
+    img.onerror = () => reject(new Error("Gagal memuat gambar barcode."));
+    img.src = barcodeUrl;
+  });
+}
