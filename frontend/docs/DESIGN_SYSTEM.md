@@ -1,50 +1,51 @@
 # jstock Frontend Design System
 
-Referensi visual (palet, tipografi, komponen) tersedia sebagai style guide interaktif — lihat tautan yang dibagikan di percakapan, atau regenerasi dari `docs/` bila dibutuhkan. Dokumen ini adalah panduan pemakaian di kode.
+Referensi visual: `docs/Inventory Dashboard (standalone).html` — sebuah prototipe Claude Design ("Puskalindo", sistem inventory gas kalibrasi) yang jadi acuan palet, tipografi, dan layout jstock saat ini. Dokumen ini adalah panduan pemakaian di kode.
 
 ## 1. Filosofi
 
-jstock dipakai berjam-jam oleh Owner/Manager/Operator/Viewer gudang setiap hari — bukan situs pemasaran. Prioritasnya: **mudah dipindai, kontras yang aman, dan konsisten** di setiap layar. Semua token warna & tipografi didefinisikan satu kali di `src/index.css`, lalu dikonsumsi lewat utility class Tailwind — jangan menulis hex/px manual di komponen halaman.
+jstock dipakai berjam-jam oleh Owner/Manager/Operator/Viewer gudang setiap hari — bukan situs pemasaran. Prioritasnya: **mudah dipindai, kontras yang aman, dan konsisten** di setiap layar. Referensinya sendiri light-only (tidak mendesain mode gelap), jadi jstock ikut light-only — jangan tambahkan `dark:` atau media query gelap baru tanpa keputusan desain eksplisit. Semua token warna & tipografi didefinisikan satu kali di `src/index.css`, lalu dikonsumsi lewat utility class Tailwind — jangan menulis hex/px manual di komponen halaman (kecuali beberapa ukuran presisi dari referensi yang memang ditulis sebagai arbitrary value, mis. `text-[15px]`, `tracking-[-0.25px]`).
 
 ## 2. Palet Warna
 
-Sumber: [Color Hunt](https://colorhunt.co/palette/0741731679ab5debd7c5ff95) (`#074173`, `#1679AB`, `#5DEBD7`, `#C5FF95`), dikombinasikan dengan token netral & semantik jstock.
+| Token Tailwind | Variabel CSS | Nilai | Dipakai untuk |
+|---|---|---|---|
+| `bg-primary` / `text-primary` | `--primary` | `#0075de` | Tombol utama, link, nav aktif |
+| `bg-primary-ink` / `text-primary-ink` | `--primary-ink` | `#005bab` | Hover/pressed di atas primary |
+| `bg-primary-soft` | `--primary-soft` | `#eaf3fd` | Latar chip/nav aktif/avatar yang lembut |
+| `bg-brand-mark` | `--brand-mark` | `#213183` | Kotak logo jstock (sidebar, login, invoice) |
+| `bg-ink` / `text-ink` | `--ink` | `#000000` | Teks utama |
+| `text-ink-muted` | `--ink-muted` | `#615d59` | Teks sekunder/caption/deskripsi |
+| `text-ink-faint` | `--ink-faint` | `#a39e98` | Placeholder, label uppercase kecil, teks disabled |
+| `bg-bg` | `--bg` | `#f6f5f4` | Latar halaman |
+| `bg-surface` | `--surface` | `#ffffff` | Kartu, tabel, form, sidebar |
+| `bg-surface-2` | `--surface-2` | `#f6f5f4` | Header tabel, hover baris, empty state |
+| `border-border` | `--border` | `#e6e6e6` | Semua border kartu/tabel/divider |
 
-| Token Tailwind | Variabel CSS | Light | Dark | Dipakai untuk |
-|---|---|---|---|---|
-| `bg-primary` / `text-primary` | `--primary` | `#1679ab` | `#5debd7` | Tombol utama, link, nav aktif |
-| `bg-primary-ink` / `text-primary-ink` | `--primary-ink` | `#074173` | `#a9f5e9` | Hover/emphasis di atas primary |
-| `bg-primary-soft` | `--primary-soft` | `#e1eef4` | `#123c37` | Latar chip/nav aktif yang lembut |
-| `bg-accent` | `--accent` | `#2f9c85` | `#5debd7` | Aksen sekunder (jarang dipakai) |
-| `bg-lime-soft` / `text-lime-ink` | `--lime`, `--lime-ink` | `#c5ff95` / `#4a6b1e` | — | Highlight positif non-status (mis. badge promo) |
-| `bg-ink` / `text-ink` | `--ink` | `#16211d` | `#e9efec` | Teks utama |
-| `text-ink-muted` | `--ink-muted` | `#5b6d66` | `#9db0a8` | Teks sekunder/caption |
-| `bg-surface` | `--surface` | `#ffffff` | `#162019` | Kartu, tabel, form |
-| `bg-surface-2` | `--surface-2` | `#eef2f0` | `#1c2820` | Header tabel, sidebar, hover |
-| `border-border` | `--border` | `#dde3e0` | `#2b3a32` | Semua border |
+**Warna semantik status** — *sengaja terpisah dari warna brand* supaya makna status transaksi/data tidak pernah tertukar dengan warna aksi biasa. Tiap status juga punya varian `-soft` (latar) dan `-border` (cincin tipis di `Badge`):
 
-**Warna semantik status** — *sengaja terpisah dari warna brand* supaya makna status transaksi/data tidak pernah tertukar dengan warna aksi biasa:
+| Token | Nilai (teks / latar / border) | Arti | Dipakai di `<Badge status="...">` |
+|---|---|---|---|
+| `success` | `#0f7a27` / `#e6f7ea` / `#b9e6c3` | Approved / Aktif | `status="approved"` / `"active"` |
+| `success-solid` | `#1aae39` | Isi tombol **Approve** (`variant="success"`) | — |
+| `warning` | `#8a5a00` / `#fdf3d9` / `#f0d78c` | Pending | `status="pending"` |
+| `danger` | `#b3282c` / `#fceaea` / `#f3c6c7` | Rejected / Suspended | `status="rejected"` / `"suspended"` |
+| `danger-solid` | `#e5484d` | Isi tombol **danger** solid, teks/border tombol **outline-danger** (Reject) | — |
+| `info` | `#0075de` (= primary) | Trial / info terkait brand | `status="trial"` |
+| netral (`ink-muted` / `surface-2` / `border`) | — | Cancelled / Nonaktif | `status="cancelled"` / `"inactive"` |
 
-| Token | Arti | Dipakai di `<Badge status="...">` |
-|---|---|---|
-| `success` (hijau) | Approved / Aktif | `status="approved"` / `"active"` |
-| `warning` (amber) | Pending | `status="pending"` |
-| `danger` (merah) | Rejected | `status="rejected"` |
-| `info` (biru brand) | Trial / info terkait brand | `status="trial"` |
-| netral (`ink-muted`) | Cancelled / Nonaktif | `status="cancelled"` / `"inactive"` |
-
-Mode gelap mengikuti `prefers-color-scheme` sistem operasi secara otomatis — tidak perlu menulis `dark:` di komponen halaman karena token CSS-nya sendiri yang berubah nilai.
+Tidak ada mode gelap — referensi tidak mendesainnya, jadi jangan bikin token gelap yang tidak punya sumber acuan.
 
 ## 3. Tipografi
 
-Dua keluarga font saja, dimuat di `index.html` dari Google Fonts:
+- **Inter** (`font-sans`, default) — satu-satunya font UI: heading, body, label, tombol. Dimuat dari Google Fonts di `index.html`.
+- **Monospace sistem** (`font-mono` = `ui-monospace, SFMono-Regular, Menlo, monospace`) — khusus kode: LOT/Batch, nomor transaksi, slug. Tidak pakai web font, sesuai referensi.
 
-- **Public Sans** (`font-sans`, default) — semua teks UI: heading, body, label, tombol.
-- **IBM Plex Mono** (`font-mono`) — khusus data yang perlu sejajar rapi: LOT/Batch, nomor transaksi, nominal uang.
+Ukuran yang sering dipakai persis seperti referensi (arbitrary value, bukan skala Tailwind default): judul halaman `text-[22px] font-bold tracking-[-0.25px]`, body form `text-[15px]`, angka besar stat tile `text-[32px] font-bold tracking-[-0.5px]`.
 
 ```jsx
-<span className="font-mono text-xs">{product.lot_batch}</span>
-<span>{formatCurrency(product.unit_cost)}</span> {/* font-sans default */}
+<CodeChip>{product.lot_batch}</CodeChip>            {/* font-mono, dibungkus pill */}
+<span>{formatCurrency(product.unit_cost)}</span>    {/* font-sans default */}
 ```
 
 ## 4. Komponen Reusable
@@ -52,21 +53,24 @@ Dua keluarga font saja, dimuat di `index.html` dari Google Fonts:
 Semua ada di `src/components/ui/`, diimpor lewat barrel file:
 
 ```jsx
-import { Alert, Badge, Button, Card, DataTable, EmptyState, Input, PageHeader, Select, StatTile } from "../../components/ui";
+import { Alert, Badge, Button, Card, CodeChip, DataTable, EmptyState, Input, PageHeader, Pagination, Select, StatTile } from "../../components/ui";
 ```
 
 | Komponen | Kegunaan | Props penting |
 |---|---|---|
-| `Button` | Semua tombol aksi | `variant`: `primary` \| `secondary` \| `ghost` \| `danger`; `size`: `sm` \| `md` |
+| `Button` | Semua tombol aksi | `variant`: `primary` \| `secondary` \| `ghost` \| `success` \| `danger` \| `outline-danger`; `size`: `sm` \| `md` |
 | `Input` / `Select` | Field form dengan label + error/hint bawaan | `label`, `error`, `hint`, plus semua prop native `<input>`/`<select>` |
 | `Badge` | Status pill (transaksi, aktif/nonaktif) | `status` — lihat tabel semantik di atas |
+| `CodeChip` | Pill monospace untuk kode (LOT/Batch, No. Transaksi, slug) | `children` |
 | `Card` | Kontainer section (form, ringkasan) | `title`, `action` (slot kanan, mis. tombol) |
-| `DataTable` | Tabel data generik, scroll horizontal otomatis, kolom "No." otomatis | `columns` (`{key, header, render?(row, index)}`), `rows`, `rowKey(row)`, `emptyMessage`, `showIndex` (default `true`) |
+| `DataTable` | Tabel data generik, scroll horizontal otomatis, kolom "No." otomatis | `columns` (`{key, header, render?(row, index)}`), `rows`, `rowKey(row)`, `emptyMessage`, `showIndex` (default `true`), `startIndex` |
 | `PageHeader` | Judul halaman + deskripsi + aksi utama | `title`, `description`, `action` |
 | `EmptyState` | Placeholder saat data/fitur belum ada | `title`, `description`, `action` |
 | `Alert` | Pesan error/sukses/info sebaris | `tone`: `danger` \| `success` \| `info`; render `null` kalau `children` kosong — aman dipakai langsung dengan state error (`<Alert>{error}</Alert>`) |
 | `Pagination` | Navigasi halaman di bawah `DataTable` | `currentPage`, `lastPage`, `total`, `onPageChange(page)`; render `null` otomatis kalau cuma 1 halaman |
 | `StatTile` | Kartu angka ringkasan (dashboard) | `label`, `value`, `delta` (opsional) |
+
+Approve/Reject di `TransactionsPage` memakai `variant="success"` (hijau solid, `#1aae39`) dan `variant="outline-danger"` (putih + border merah `#e5484d`) — bukan `primary`/`secondary` — persis konvensi warna di referensi: hijau selalu berarti "menyetujui", merah-outline berarti "aksi destruktif yang masih perlu konfirmasi visual halus".
 
 ### Pola penggunaan `DataTable`
 
@@ -89,7 +93,7 @@ Setiap tabel otomatis dapat kolom **No.** di paling kiri berisi nomor urut baris
 
 ### Pola `Pagination`
 
-Semua endpoint list backend (`/clients`, `/products`, `/transactions`) sudah mengembalikan `meta: { current_page, last_page, total }` dengan 10 data per halaman. Pola standarnya di tiap halaman:
+Semua endpoint list backend (`/clients`, `/products`, `/transactions`, `/admin/tenants`) sudah mengembalikan `meta: { current_page, last_page, total }` dengan 10 data per halaman. Pola standarnya di tiap halaman:
 
 ```jsx
 const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
@@ -114,10 +118,10 @@ await loadClients(meta.current_page); // update/delete -> tetap di halaman yang 
 
 ## 5. Layout & Responsivitas
 
-`AppLayout` (`src/layouts/AppLayout.jsx`) adalah shell utama: sidebar + topbar + konten.
+`AppLayout` (`src/layouts/AppLayout.jsx`) adalah shell utama: sidebar (236px, `w-59`) + area konten. Berbeda dari versi sebelumnya, info user & tombol Logout kini ada **di bagian bawah sidebar** (bukan topbar terpisah), persis pola referensi.
 
-- **Desktop (`lg:` / ≥1024px)**: sidebar selalu terlihat di kiri (`lg:static lg:translate-x-0`), konten punya `lg:pl-64`.
-- **Mobile/tablet (<1024px)**: sidebar jadi drawer (`fixed`, `-translate-x-full` saat tertutup), dibuka lewat tombol hamburger (☰) di topbar, ditutup lewat tombol ✕ atau klik overlay gelap.
+- **Desktop (`lg:` / ≥1024px)**: container luar `lg:flex`, sidebar jadi flex item biasa lewat `lg:static` (bukan `fixed` + `padding-left` di konten — pola lama ini pernah menyebabkan bug sidebar-menumpuk-di-atas-konten karena parent bukan flex container; sekarang strukturnya flexbox asli jadi kelas bug itu tidak bisa terulang).
+- **Mobile/tablet (<1024px)**: sidebar jadi drawer (`fixed`, `-translate-x-full` saat tertutup), dibuka lewat topbar tipis berisi tombol hamburger (☰), ditutup lewat tombol ✕ di header drawer atau klik overlay gelap.
 - Sidebar **tidak** menyempit jadi ikon-saja di breakpoint manapun — label navigasi harus selalu terbaca penuh karena satu perangkat gudang sering dipakai bergantian banyak orang.
 
 Breakpoint yang dipakai konsisten di semua halaman (Tailwind default): `sm` 640px, `lg` 1024px. Form multi-kolom pola standarnya:
@@ -130,7 +134,7 @@ Tabel selalu dibungkus `overflow-x-auto` (sudah built-in di `DataTable`) supaya 
 
 ## 6. Menambah Komponen Baru
 
-1. Taruh di `src/components/ui/NamaKomponen.jsx`, styling **hanya** lewat utility Tailwind + token di atas (jangan hardcode hex baru — tambahkan token ke `src/index.css` dulu kalau memang perlu warna baru).
+1. Taruh di `src/components/ui/NamaKomponen.jsx`, styling **hanya** lewat utility Tailwind + token di atas (jangan hardcode hex baru — tambahkan token ke `src/index.css` dulu kalau memang perlu warna baru, dan cek dulu apakah warnanya ada di referensi `docs/Inventory Dashboard (standalone).html`).
 2. Export dari `src/components/ui/index.js`.
 3. Kalau komponennya butuh varian warna/ukuran, ikuti pola `Button`/`Badge` (object map `VARIANTS`/`STATUS_STYLES`), bukan `if/else` berantai.
-4. Uji di kedua mode (terang/gelap) — cukup toggle color scheme di OS/browser devtools, karena semua token sudah otomatis mengikuti `prefers-color-scheme`.
+4. Referensi tidak mendesain mode gelap — jangan tambahkan `dark:` sampai ada keputusan desain baru yang eksplisit.

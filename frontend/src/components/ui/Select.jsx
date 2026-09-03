@@ -2,11 +2,11 @@ export default function Select({ label, error, hint, className = "", id, childre
   const selectId = id ?? props.name;
 
   return (
-    <label className="flex flex-col gap-1 text-sm" htmlFor={selectId}>
-      {label && <span className="font-semibold text-ink">{label}</span>}
+    <label className="flex flex-col gap-1.5 text-sm" htmlFor={selectId}>
+      {label && <span className="text-sm font-semibold text-ink">{label}</span>}
       <select
         id={selectId}
-        className={`cursor-pointer rounded-md border bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-soft ${
+        className={`h-10 cursor-pointer rounded border bg-surface px-2.5 text-[15px] text-ink focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,117,222,0.12)] ${
           error ? "border-danger" : "border-border focus:border-primary"
         } ${className}`}
         {...props}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, Card, DataTable, Input, PageHeader, Pagination, Select } from "../../components/ui";
+import { Alert, Badge, Button, Card, CodeChip, DataTable, Input, PageHeader, Pagination, Select } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 
@@ -88,7 +88,7 @@ export default function TransactionsPage() {
   };
 
   const columns = [
-    { key: "trx_number", header: "No. Trx", render: (row) => <span className="font-mono text-xs">{row.trx_number}</span> },
+    { key: "trx_number", header: "No. Trx", render: (row) => <CodeChip>{row.trx_number}</CodeChip> },
     { key: "sender", header: "Pengirim", render: (row) => row.sender?.name ?? "-" },
     { key: "recipient", header: "Penerima", render: (row) => row.recipient?.name ?? "-" },
     { key: "total", header: "Total", render: (row) => formatCurrency(row.total) },
@@ -102,10 +102,10 @@ export default function TransactionsPage() {
       render: (row) =>
         row.status === "pending" && (
           <div className="flex gap-2">
-            <Button variant="primary" size="sm" onClick={() => handleApprove(row.id)}>
+            <Button variant="success" size="sm" onClick={() => handleApprove(row.id)}>
               Approve
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleReject(row.id)}>
+            <Button variant="outline-danger" size="sm" onClick={() => handleReject(row.id)}>
               Reject
             </Button>
           </div>
@@ -171,9 +171,14 @@ export default function TransactionsPage() {
             </div>
           </form>
           {selectedProduct && (
-            <p className="mt-3 rounded-md border border-dashed border-warning/40 bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
-              Highlight: {selectedProduct.name} &middot; {selectedProduct.lot_batch} &middot; Stok tersedia {selectedProduct.stock_qty}
-            </p>
+            <div className="mt-4 rounded-lg bg-surface-2 p-4">
+              <div className="mb-2 text-xs font-semibold tracking-wide text-success uppercase">✓ Barang Ditemukan</div>
+              <div className="mb-1 text-base font-semibold text-ink">{selectedProduct.name}</div>
+              <div className="mb-2">
+                <CodeChip>{selectedProduct.lot_batch}</CodeChip>
+              </div>
+              <div className="text-sm text-ink-muted">Stok tersedia: {selectedProduct.stock_qty}</div>
+            </div>
           )}
         </Card>
       </Can>

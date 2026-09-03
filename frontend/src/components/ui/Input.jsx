@@ -2,11 +2,11 @@ export default function Input({ label, error, hint, className = "", id, ...props
   const inputId = id ?? props.name;
 
   return (
-    <label className="flex flex-col gap-1 text-sm" htmlFor={inputId}>
-      {label && <span className="font-semibold text-ink">{label}</span>}
+    <label className="flex flex-col gap-1.5 text-sm" htmlFor={inputId}>
+      {label && <span className="text-sm font-semibold text-ink">{label}</span>}
       <input
         id={inputId}
-        className={`rounded-md border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-soft ${
+        className={`h-10 rounded border bg-surface px-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,117,222,0.12)] ${
           error ? "border-danger" : "border-border focus:border-primary"
         } ${className}`}
         {...props}

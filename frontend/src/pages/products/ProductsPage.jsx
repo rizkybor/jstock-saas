@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Button, Card, DataTable, Input, PageHeader, Pagination } from "../../components/ui";
+import { Alert, Button, Card, CodeChip, DataTable, Input, PageHeader, Pagination } from "../../components/ui";
 import Can from "../../routes/Can";
 
 const EMPTY_FORM = { name: "", unit_cost: "", quantity: "", additional_cost: "" };
@@ -50,7 +50,7 @@ export default function ProductsPage() {
 
   const columns = [
     { key: "name", header: "Nama Barang" },
-    { key: "lot_batch", header: "LOT/Batch", render: (row) => <span className="font-mono text-xs">{row.lot_batch}</span> },
+    { key: "lot_batch", header: "LOT/Batch", render: (row) => <CodeChip>{row.lot_batch}</CodeChip> },
     { key: "unit_cost", header: "Unit Cost", render: (row) => formatCurrency(row.unit_cost) },
     { key: "grand_total_cost", header: "Grand Total Cost", render: (row) => formatCurrency(row.grand_total_cost) },
     { key: "cogs", header: "COGS/unit", render: (row) => formatCurrency(row.cogs) },

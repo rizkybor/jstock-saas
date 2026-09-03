@@ -30,13 +30,12 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-6 shadow-sm sm:p-8">
-        <div className="mb-6 text-center">
-          <span className="text-2xl font-bold text-ink">
-            j<span className="text-primary">stock</span>
-          </span>
-          <p className="mt-1 text-sm text-ink-muted">Masuk ke akun Anda</p>
+      <div className="w-full max-w-95 rounded-2xl bg-surface p-8 shadow-[0_0.175px_1.041px_rgba(0,0,0,0.01),0_0.8px_2.925px_rgba(0,0,0,0.02),0_2.025px_7.847px_rgba(0,0,0,0.027),0_4px_18px_rgba(0,0,0,0.04)]">
+        <div className="mb-1 flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-lg bg-brand-mark" />
+          <span className="text-xl font-semibold tracking-[-0.125px] text-ink">jstock</span>
         </div>
+        <p className="mb-6 text-sm text-ink-muted">Sistem Inventory — masuk untuk melanjutkan</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
@@ -58,10 +57,12 @@ export default function LoginPage() {
             required
           />
           <Alert>{error}</Alert>
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button type="submit" disabled={loading} className="w-full rounded-full py-2.5">
             {loading ? "Memproses..." : "Masuk"}
           </Button>
         </form>
+
+        <p className="mt-4 text-center text-xs text-ink-faint">Demo: budi@contoh.test / password123</p>
       </div>
     </div>
   );

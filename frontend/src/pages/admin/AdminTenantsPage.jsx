@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, DataTable, PageHeader, Pagination, StatTile } from "../../components/ui";
+import { Alert, Badge, Button, CodeChip, DataTable, PageHeader, Pagination, StatTile } from "../../components/ui";
 
 export default function AdminTenantsPage() {
   const [tenants, setTenants] = useState([]);
@@ -56,7 +56,7 @@ export default function AdminTenantsPage() {
 
   const columns = [
     { key: "name", header: "Nama Perusahaan" },
-    { key: "slug", header: "Slug", render: (row) => <span className="font-mono text-xs">{row.slug}</span> },
+    { key: "slug", header: "Slug", render: (row) => <CodeChip>{row.slug}</CodeChip> },
     { key: "status", header: "Status", render: (row) => <Badge status={row.status}>{row.status}</Badge> },
     { key: "users_count", header: "Jumlah User" },
     { key: "plan", header: "Plan", render: (row) => row.plan ?? "-" },

@@ -1,72 +1,51 @@
 @import 'tailwindcss';
 
 /*
- * jstock design tokens — see the design system reference for the
- * rationale (Color Hunt brand palette + separate semantic status hues).
- * Light values live on :root; the dark media query overrides only the
- * values, so every `bg-surface` / `text-ink` utility below reacts to
- * the OS color-scheme automatically without a `dark:` prefix.
+ * jstock design tokens — matched to the "Puskalindo" inventory dashboard
+ * reference (docs/Inventory Dashboard (standalone).html): a light-only,
+ * neutral warm-grey shell with a single blue brand color and status hues
+ * kept deliberately separate from it. No dark variant is defined on
+ * purpose — the reference doesn't design for one, so neither do we.
  */
 :root {
-  --bg: #f4f6f5;
+  --bg: #f6f5f4;
   --surface: #ffffff;
-  --surface-2: #eef2f0;
-  --border: #dde3e0;
+  --surface-2: #f6f5f4;
+  --border: #e6e6e6;
 
-  --ink: #16211d;
-  --ink-muted: #5b6d66;
+  --ink: #000000;
+  --ink-muted: #615d59;
+  --ink-faint: #a39e98;
 
-  --primary: #1679ab;
-  --primary-ink: #074173;
-  --primary-soft: #e1eef4;
+  --primary: #0075de;
+  --primary-ink: #005bab;
+  --primary-soft: #eaf3fd;
 
-  --accent: #2f9c85;
-  --accent-soft: #dff5ee;
+  --brand-mark: #213183;
 
-  --lime: #c5ff95;
-  --lime-ink: #4a6b1e;
-  --lime-soft: #eefadb;
+  --accent: #0075de;
+  --accent-soft: #eaf3fd;
 
-  --success: #1e9e6b;
-  --success-soft: #e1f5ec;
-  --warning: #c98a1c;
-  --warning-soft: #fbf1de;
-  --danger: #c4443a;
-  --danger-soft: #fbe9e7;
-  --info: #1679ab;
-  --info-soft: #e1eef4;
-}
+  --lime: #1aae39;
+  --lime-ink: #0f7a27;
+  --lime-soft: #e6f7ea;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1613;
-    --surface: #162019;
-    --surface-2: #1c2820;
-    --border: #2b3a32;
+  --success: #0f7a27;
+  --success-soft: #e6f7ea;
+  --success-border: #b9e6c3;
+  --success-solid: #1aae39;
 
-    --ink: #e9efec;
-    --ink-muted: #9db0a8;
+  --warning: #8a5a00;
+  --warning-soft: #fdf3d9;
+  --warning-border: #f0d78c;
 
-    --primary: #5debd7;
-    --primary-ink: #a9f5e9;
-    --primary-soft: #123c37;
+  --danger: #b3282c;
+  --danger-soft: #fceaea;
+  --danger-border: #f3c6c7;
+  --danger-solid: #e5484d;
 
-    --accent: #5debd7;
-    --accent-soft: #123c37;
-
-    --lime: #c5ff95;
-    --lime-ink: #dcf7b8;
-    --lime-soft: #26350f;
-
-    --success: #6fe3a6;
-    --success-soft: #123a2c;
-    --warning: #e3b15c;
-    --warning-soft: #3a2c11;
-    --danger: #e58b83;
-    --danger-soft: #3a1e1a;
-    --info: #5debd7;
-    --info-soft: #123c37;
-  }
+  --info: #0075de;
+  --info-soft: #eaf3fd;
 }
 
 @theme inline {
@@ -77,10 +56,13 @@
 
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
 
   --color-primary: var(--primary);
   --color-primary-ink: var(--primary-ink);
   --color-primary-soft: var(--primary-soft);
+
+  --color-brand-mark: var(--brand-mark);
 
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
@@ -91,15 +73,20 @@
 
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-success-solid: var(--success-solid);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-danger-solid: var(--danger-solid);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
 
-  --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
 
 body {
@@ -107,4 +94,5 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
