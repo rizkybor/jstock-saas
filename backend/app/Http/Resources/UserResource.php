@@ -27,28 +27,24 @@ class UserResource extends JsonResource
             'tenant_name' => $this->tenant?->name,
             'permissions' => $this->permissions(),
             // Module keys this tenant actually has, and the effective
-            // enabled/disabled state of every menu across those modules —
-            // AppLayout uses both to decide which nav links to render.
-            // Flattened across modules: fine while there's only one, but a
-            // future second module reusing a menu_key would need this
-            // reshaped to stay keyed by module.
+            // enabled/disabled state of every menu for each of those
+            // modules — AppLayout uses both to decide which nav links to
+            // render. Keyed by module key (not flattened) so two modules
+            // can each have a menu of the same name without colliding.
             'modules' => $this->tenant_id ? $this->tenant->modules()->pluck('key') : [],
             'menus' => $this->tenant_id ? $this->effectiveMenus() : [],
         ];
     }
 
     /**
-     * @return array<string, bool>
+     * @return array<string, array<string, bool>>
      */
     private function effectiveMenus(): array
     {
         $moduleKeys = $this->tenant->modules()->pluck('key');
 
-        return $moduleKeys->reduce(
-            fn ($menus, $moduleKey) => array_key_exists($moduleKey, Module::MENU_CATALOG)
-                ? [...$menus, ...TenantMenuSetting::effectiveMenusFor($this->tenant_id, $moduleKey)]
-                : $menus,
-            [],
-        );
+        return $moduleKeys->mapWithKeys(fn ($moduleKey) => array_key_exists($moduleKey, Module::MENU_CATALOG)
+            ? [$moduleKey => TenantMenuSetting::effectiveMenusFor($this->tenant_id, $moduleKey)]
+            : [])->all();
     }
 }

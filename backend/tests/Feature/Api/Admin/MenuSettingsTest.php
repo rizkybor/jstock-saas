@@ -137,7 +137,26 @@ class MenuSettingsTest extends TestCase
             ->getJson('/api/auth/me')
             ->assertOk()
             ->assertJsonPath('data.modules.0', 'inventory-gas-kalibrasi')
-            ->assertJsonPath('data.menus.clients', true)
-            ->assertJsonPath('data.menus.reports', false);
+            ->assertJsonPath('data.menus.inventory-gas-kalibrasi.clients', true)
+            ->assertJsonPath('data.menus.inventory-gas-kalibrasi.reports', false);
+    }
+
+    public function test_two_modules_menus_stay_separate_even_with_the_same_menu_key(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $moduleA = Module::create(['key' => 'inventory-gas-kalibrasi', 'name' => 'Inventory Gas Kalibrasi']);
+        $moduleB = Module::create(['key' => 'warehouse-general', 'name' => 'Warehouse General']);
+        $tenant->modules()->attach([$moduleA->id, $moduleB->id]);
+        TenantMenuSetting::create([
+            'tenant_id' => $tenant->id, 'module_key' => 'warehouse-general', 'menu_key' => 'items', 'enabled' => false,
+        ]);
+        $owner = $this->makeOwner($tenant);
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.menus.inventory-gas-kalibrasi.dashboard', true)
+            ->assertJsonPath('data.menus.warehouse-general.locations', true)
+            ->assertJsonPath('data.menus.warehouse-general.items', false);
     }
 }
