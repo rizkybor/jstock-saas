@@ -190,7 +190,7 @@ export default function TransactionsPage() {
       render: (row) =>
         row.status === "approved" ? (
           <Badge status={row.shipping_status === "shipped" ? "approved" : "pending"}>
-            {row.shipping_status === "shipped" ? "Terkirim" : "Belum Terkirim"}
+            {row.shipping_status === "shipped" ? "Shipped" : "Unshipped"}
           </Badge>
         ) : (
           <span className="text-xs text-ink-faint">-</span>
@@ -387,7 +387,7 @@ export default function TransactionsPage() {
                   <div className="text-xs text-ink-muted">Status Pengiriman</div>
                   <div className="mt-1">
                     <Badge status={selected.shipping_status === "shipped" ? "approved" : "pending"}>
-                      {selected.shipping_status === "shipped" ? "Terkirim" : "Belum Terkirim"}
+                      {selected.shipping_status === "shipped" ? "Shipped" : "Unshipped"}
                     </Badge>
                   </div>
                   {shippingError && <p className="mt-2 text-xs text-danger">{shippingError}</p>}
