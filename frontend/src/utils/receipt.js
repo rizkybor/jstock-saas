@@ -113,7 +113,7 @@ function loadImage(src) {
  */
 export async function downloadTransactionReceipt(transaction, { tenantId, tenantName }) {
   const width = 380;
-  const padding = 16;
+  const padding = 12;
   const contentWidth = width - padding * 2;
 
   // Everything below is drawn in these logical (point-like) units — SCALE
