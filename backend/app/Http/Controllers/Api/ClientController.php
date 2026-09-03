@@ -21,7 +21,7 @@ class ClientController extends Controller
                         ->orWhere('pic_name', 'like', "%{$search}%");
                 });
             })
-            ->when($request->filled('status'), fn ($query) => $query->where('is_active', $request->string('status') === 'active'))
+            ->when($request->filled('status'), fn ($query) => $query->where('is_active', $request->string('status')->toString() === 'active'))
             ->latest()
             ->paginate($request->integer('limit', 10));
 

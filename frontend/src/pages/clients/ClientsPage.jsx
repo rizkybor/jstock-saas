@@ -19,7 +19,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
-  const [deactivatingId, setDeactivatingId] = useState(null);
+  const [statusBusyId, setStatusBusyId] = useState(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -107,14 +107,22 @@ export default function ClientsPage() {
     }
   };
 
-  const handleDeactivate = async (id) => {
-    if (!confirm("Nonaktifkan klien ini?")) return;
-    setDeactivatingId(id);
+  const handleToggleStatus = async (client) => {
+    const activating = !client.is_active;
+    if (!confirm(activating ? `Aktifkan klien "${client.company_name}"?` : `Nonaktifkan klien "${client.company_name}"?`)) return;
+
+    setStatusBusyId(client.id);
     try {
-      await apiClient.delete(`/clients/${id}`);
+      if (activating) {
+        await apiClient.put(`/clients/${client.id}`, { is_active: true });
+      } else {
+        await apiClient.delete(`/clients/${client.id}`);
+      }
       await loadClients(meta.current_page);
+    } catch (err) {
+      setError(err.response?.data?.message ?? "Gagal memperbarui status klien.");
     } finally {
-      setDeactivatingId(null);
+      setStatusBusyId(null);
     }
   };
 
@@ -143,12 +151,12 @@ export default function ClientsPage() {
           </Can>
           <Can permission="clients.delete">
             <Button
-              variant="danger"
+              variant={row.is_active ? "danger" : "success"}
               size="sm"
-              loading={deactivatingId === row.id}
-              onClick={() => handleDeactivate(row.id)}
+              loading={statusBusyId === row.id}
+              onClick={() => handleToggleStatus(row)}
             >
-              Nonaktifkan
+              {row.is_active ? "Nonaktifkan" : "Aktifkan"}
             </Button>
           </Can>
         </div>

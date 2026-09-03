@@ -40,7 +40,7 @@ export default function TransactionCreatePage() {
           apiClient.get("/transactions/next-number"),
           apiClient.get("/products", { params: { limit: 1000 } }),
           apiClient.get("/users"),
-          apiClient.get("/clients", { params: { limit: 1000 } }),
+          apiClient.get("/clients", { params: { limit: 1000, status: "active" } }),
         ]);
         setTrxNumber(nextRes.data.data.trx_number);
         setProducts(productsRes.data.data);

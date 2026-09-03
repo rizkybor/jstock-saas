@@ -108,6 +108,44 @@ class ClientTenantIsolationTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
+    public function test_status_filter_returns_the_matching_clients_not_the_opposite(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        Client::create(['tenant_id' => $tenant->id, 'company_name' => 'PT Aktif', 'pic_name' => 'Andi', 'is_active' => true]);
+        Client::create(['tenant_id' => $tenant->id, 'company_name' => 'PT Nonaktif', 'pic_name' => 'Budi', 'is_active' => false]);
+
+        $active = $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/clients?status=active')
+            ->assertOk()
+            ->json('data');
+        $this->assertCount(1, $active);
+        $this->assertSame('PT Aktif', $active[0]['company_name']);
+
+        $inactive = $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/clients?status=inactive')
+            ->assertOk()
+            ->json('data');
+        $this->assertCount(1, $inactive);
+        $this->assertSame('PT Nonaktif', $inactive[0]['company_name']);
+    }
+
+    public function test_a_deactivated_client_can_be_reactivated_via_update(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $client = Client::create(['tenant_id' => $tenant->id, 'company_name' => 'PT Contoh', 'pic_name' => 'Andi', 'is_active' => false]);
+
+        $this->actingAs($owner, 'sanctum')
+            ->putJson("/api/clients/{$client->id}", ['is_active' => true])
+            ->assertOk()
+            ->assertJsonPath('data.is_active', true);
+
+        $this->assertTrue($client->fresh()->is_active);
+    }
+
     public function test_tenant_without_the_module_cannot_access_clients(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant C', 'slug' => 'tenant-c', 'status' => 'trial']);
