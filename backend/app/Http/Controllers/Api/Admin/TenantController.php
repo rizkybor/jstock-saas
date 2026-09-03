@@ -193,9 +193,11 @@ class TenantController extends Controller
      */
     public function subscription(Tenant $tenant)
     {
+        $subscription = $tenant->subscriptions()->latest()->with('plan')->first();
+
         return response()->json([
             'success' => true,
-            'data' => new SubscriptionResource($tenant->subscriptions()->latest()->with('plan')->first()),
+            'data' => $subscription ? new SubscriptionResource($subscription) : null,
             'message' => null,
         ]);
     }

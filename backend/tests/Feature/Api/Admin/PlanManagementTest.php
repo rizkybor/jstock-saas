@@ -45,6 +45,17 @@ class PlanManagementTest extends TestCase
             ->assertJsonPath('data.0.name', 'Pro');
     }
 
+    public function test_subscription_endpoint_returns_null_data_for_a_tenant_with_no_subscription(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson("/api/admin/tenants/{$tenant->token}/subscription")
+            ->assertOk()
+            ->assertJsonPath('data', null);
+    }
+
     public function test_super_admin_can_change_a_tenants_plan(): void
     {
         $admin = $this->makeSuperAdmin();
