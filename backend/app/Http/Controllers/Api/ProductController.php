@@ -47,11 +47,16 @@ class ProductController extends Controller
 
         [$grandTotalCost, $cogs] = $this->calculateCost($data['unit_cost'], $data['quantity'], $data['additional_cost'] ?? 0);
 
+        // A barcode needs something to encode — auto-generate a unique_id
+        // when a barcode type was requested but none was supplied.
+        $uniqueId = $data['unique_id'] ?? (! empty($data['barcode_type']) ? $this->generateUniqueId() : null);
+
         $product = Product::create([
             'name' => $data['name'],
             'product_series_id' => $data['product_series_id'],
             'lot_batch' => $data['lot_batch'] ?? $this->generateLotBatch(),
-            'unique_id' => $data['unique_id'] ?? null,
+            'unique_id' => $uniqueId,
+            'barcode_type' => $data['barcode_type'] ?? null,
             'item_detail' => $data['item_detail'] ?? null,
             'unit_cost' => $data['unit_cost'],
             'additional_cost' => $data['additional_cost'] ?? 0,
@@ -80,6 +85,11 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product)
     {
         $data = $request->validated();
+
+        $wantsBarcode = $data['barcode_type'] ?? $product->barcode_type;
+        if (! empty($wantsBarcode) && empty($data['unique_id'] ?? $product->unique_id)) {
+            $data['unique_id'] = $this->generateUniqueId();
+        }
 
         if (isset($data['unit_cost']) || isset($data['stock_qty']) || isset($data['additional_cost'])) {
             $unitCost = $data['unit_cost'] ?? $product->unit_cost;
@@ -129,6 +139,15 @@ class ProductController extends Controller
         do {
             $candidate = 'LOT-'.now()->format('Ymd').'-'.strtoupper(Str::random(4));
         } while (Product::withoutGlobalScopes()->where('lot_batch', $candidate)->exists());
+
+        return $candidate;
+    }
+
+    private function generateUniqueId(): string
+    {
+        do {
+            $candidate = 'BRG-'.strtoupper(Str::random(8));
+        } while (Product::withoutGlobalScopes()->where('unique_id', $candidate)->exists());
 
         return $candidate;
     }

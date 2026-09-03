@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Recipient;
 use App\Models\Sender;
 use App\Models\Tenant;
+use App\Models\TenantBarcodeSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\HasInventoryModule;
@@ -491,5 +492,41 @@ class TransactionFlowTest extends TestCase
             'id' => $response->json('data.id'),
             'recipient_address_id' => null,
         ]);
+    }
+
+    public function test_transaction_accepts_an_allowed_barcode_type(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'transaction', 'enabled' => true, 'allowed_types' => ['128', 'itf']]);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+            'barcode_type' => 'itf',
+        ])->assertCreated()->assertJsonPath('data.barcode_type', 'itf');
+    }
+
+    public function test_transaction_rejects_a_barcode_type_not_allowed_for_this_tenant(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 10);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'transaction', 'enabled' => true, 'allowed_types' => ['qr']]);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+            'barcode_type' => '39',
+        ])->assertStatus(422)->assertJsonValidationErrors('barcode_type');
     }
 }

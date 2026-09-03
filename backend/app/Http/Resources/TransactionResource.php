@@ -15,6 +15,7 @@ class TransactionResource extends JsonResource
         return [
             'id' => $this->id,
             'trx_number' => $this->trx_number,
+            'barcode_type' => $this->barcode_type,
             'status' => $this->status,
             'total' => (float) $this->total,
             'invoice_number' => $this->invoice_number,

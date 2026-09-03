@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\TenantBarcodeSetting;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,6 +20,7 @@ class StoreTransactionRequest extends FormRequest
     {
         return [
             'client_id' => ['nullable', Rule::exists('clients', 'id')->where('tenant_id', tenant_id())],
+            'barcode_type' => ['nullable', Rule::in(TenantBarcodeSetting::effectiveSettingsFor(tenant_id())['transaction']['allowed_types'])],
             'address_id' => ['nullable', 'integer', Rule::exists('client_addresses', 'id')->where('client_id', $this->input('client_id'))],
             'address' => [
                 'array',

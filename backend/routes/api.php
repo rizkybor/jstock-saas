@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\ApprovalSettingsController as AdminApprovalSettingsController;
+use App\Http\Controllers\Api\Admin\BarcodeSettingController as AdminBarcodeSettingController;
 use App\Http\Controllers\Api\Admin\ModuleController as AdminModuleController;
 use App\Http\Controllers\Api\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Api\Admin\RolePermissionController as AdminRolePermissionController;
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BarcodeSettingController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ProductController;
@@ -32,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // and their own module:<key> gate here, side by side with this one.
     Route::middleware('module:inventory-gas-kalibrasi')->group(function () {
         Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('permission:dashboard.view');
+        Route::get('/barcode-settings', [BarcodeSettingController::class, 'index'])->middleware('permission:dashboard.view');
         Route::get('/reports/summary', [ReportController::class, 'summary'])->middleware('permission:reports.view');
 
         Route::get('/clients', [ClientController::class, 'index'])->middleware('permission:clients.view');
@@ -94,6 +97,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/tenants/{tenant}/approval-settings', [AdminApprovalSettingsController::class, 'show']);
         Route::put('/tenants/{tenant}/approval-settings', [AdminApprovalSettingsController::class, 'update']);
+
+        Route::get('/tenants/{tenant}/barcode-settings', [AdminBarcodeSettingController::class, 'index']);
+        Route::put('/tenants/{tenant}/barcode-settings', [AdminBarcodeSettingController::class, 'update']);
 
         Route::get('/permissions/catalog', [AdminRolePermissionController::class, 'catalog']);
         Route::get('/tenants/{tenant}/roles', [AdminRolePermissionController::class, 'index']);

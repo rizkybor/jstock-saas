@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\TenantBarcodeSetting;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,6 +26,7 @@ class UpdateProductRequest extends FormRequest
             ],
             'lot_batch' => ['nullable', 'string', 'max:100'],
             'unique_id' => ['nullable', 'string', 'max:100'],
+            'barcode_type' => ['nullable', Rule::in(TenantBarcodeSetting::effectiveSettingsFor(tenant_id())['product']['allowed_types'])],
             'item_detail' => ['nullable', 'string', 'max:1000'],
             'unit_cost' => ['sometimes', 'required', 'numeric', 'min:0'],
             'additional_cost' => ['nullable', 'numeric', 'min:0'],

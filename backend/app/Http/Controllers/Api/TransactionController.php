@@ -146,6 +146,7 @@ class TransactionController extends Controller
 
             $transaction = Transaction::create([
                 'trx_number' => $this->generateTrxNumber($tenant->id),
+                'barcode_type' => $data['barcode_type'] ?? null,
                 'client_id' => $data['client_id'] ?? null,
                 'recipient_address_id' => $recipientAddressId,
                 'recipient_address_snapshot' => $recipientAddressSnapshot,

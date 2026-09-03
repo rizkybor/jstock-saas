@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\ProductSeries;
 use App\Models\Tenant;
+use App\Models\TenantBarcodeSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\HasInventoryModule;
@@ -100,5 +101,69 @@ class ProductFlowTest extends TestCase
             'quantity' => 5,
         ])->assertStatus(422)
             ->assertJsonValidationErrors('product_series_id');
+    }
+
+    public function test_creating_a_product_with_an_allowed_barcode_type_autogenerates_a_unique_id(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeOwner($tenant);
+        $series = ProductSeries::create(['tenant_id' => $tenant->id, 'name' => 'CH4 — 2.5%']);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'product', 'enabled' => true, 'allowed_types' => ['qr', '128']]);
+
+        $response = $this->actingAs($owner, 'sanctum')->postJson('/api/products', [
+            'name' => 'Gas Kalibrasi CH4 2.5%',
+            'product_series_id' => $series->id,
+            'unit_cost' => 100000,
+            'quantity' => 10,
+            'barcode_type' => 'qr',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.barcode_type', 'qr');
+        $this->assertNotEmpty($response->json('data.unique_id'));
+    }
+
+    public function test_creating_a_product_rejects_a_barcode_type_not_allowed_for_this_tenant(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeOwner($tenant);
+        $series = ProductSeries::create(['tenant_id' => $tenant->id, 'name' => 'CH4 — 2.5%']);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'product', 'enabled' => true, 'allowed_types' => ['qr']]);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/products', [
+            'name' => 'Gas Kalibrasi CH4 2.5%',
+            'product_series_id' => $series->id,
+            'unit_cost' => 100000,
+            'quantity' => 10,
+            'barcode_type' => '128',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors('barcode_type');
+    }
+
+    public function test_editing_a_product_to_add_a_barcode_type_autogenerates_a_unique_id_if_missing(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeOwner($tenant);
+        $series = ProductSeries::create(['tenant_id' => $tenant->id, 'name' => 'CH4 — 2.5%']);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'product', 'enabled' => true, 'allowed_types' => ['39']]);
+
+        $productId = $this->actingAs($owner, 'sanctum')->postJson('/api/products', [
+            'name' => 'Gas Kalibrasi CH4 2.5%',
+            'product_series_id' => $series->id,
+            'unit_cost' => 100000,
+            'quantity' => 10,
+        ])->assertCreated()
+            ->assertJsonPath('data.unique_id', null)
+            ->json('data.id');
+
+        $response = $this->actingAs($owner, 'sanctum')
+            ->putJson("/api/products/{$productId}", ['barcode_type' => '39'])
+            ->assertOk()
+            ->assertJsonPath('data.barcode_type', '39');
+
+        $this->assertNotEmpty($response->json('data.unique_id'));
     }
 }
