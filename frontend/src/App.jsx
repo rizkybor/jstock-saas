@@ -28,15 +28,21 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
 
       <Route element={<ProtectedRoute />}>
+        {/* Barcode scan destinations render standalone, outside AppLayout —
+            no sidebar, no nav — since a scanned label is an external entry
+            point into the app, not a normal in-dashboard navigation. */}
+        <Route element={<RequireOwnTenant />}>
+          <Route path="/:tenantId/products/scan/:uniqueId" element={<ProductScanPage />} />
+          <Route path="/:tenantId/transactions/scan/:trxNumber" element={<TransactionScanPage />} />
+        </Route>
+
         <Route element={<AppLayout />}>
           <Route element={<RequireOwnTenant />}>
             <Route path="/:tenantId/dashboard" element={<DashboardPage />} />
             <Route path="/:tenantId/clients" element={<ClientsPage />} />
             <Route path="/:tenantId/products" element={<ProductsPage />} />
-            <Route path="/:tenantId/products/scan/:uniqueId" element={<ProductScanPage />} />
             <Route path="/:tenantId/transactions" element={<TransactionsPage />} />
             <Route path="/:tenantId/transactions/new" element={<TransactionCreatePage />} />
-            <Route path="/:tenantId/transactions/scan/:trxNumber" element={<TransactionScanPage />} />
             <Route path="/:tenantId/reports" element={<LaporanPage />} />
           </Route>
 

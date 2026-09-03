@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Badge, CodeChip, Skeleton } from "../../components/ui";
 import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, transactionScanUrl } from "../../utils/barcode";
@@ -8,7 +8,10 @@ import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, transactionScanUrl }
  * Landing page for a scanned transaction QR code — barcodeImageUrl()
  * encodes this exact route for the "qr" type, so a phone camera opens
  * straight here instead of just showing raw text. Read-only: approving
- * or rejecting still happens from the Transaksi list.
+ * or rejecting still happens from the Transaksi list. Rendered outside
+ * AppLayout (see App.jsx) and with no links back into the app: a
+ * scanned label is an external entry point, not a place to browse the
+ * rest of the dashboard.
  */
 export default function TransactionScanPage() {
   const { tenantId, trxNumber } = useParams();
@@ -29,13 +32,7 @@ export default function TransactionScanPage() {
   const items = transaction?.items ?? [];
 
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-4">
-        <Link to={`/${tenantId}/transactions`} className="text-sm text-ink-muted hover:text-ink">
-          &larr; Transaksi
-        </Link>
-      </div>
-
+    <div className="mx-auto min-h-screen max-w-lg bg-bg px-4 py-8">
       {loading && (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-6 w-2/3" />

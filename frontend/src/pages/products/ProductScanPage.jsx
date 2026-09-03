@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Skeleton } from "../../components/ui";
 import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, productScanUrl } from "../../utils/barcode";
@@ -11,7 +11,9 @@ const formatDate = (value) =>
 /**
  * Landing page for a scanned product QR code — barcodeImageUrl() encodes
  * this exact route for the "qr" type, so a phone camera opens straight
- * here instead of just showing raw text.
+ * here instead of just showing raw text. Rendered outside AppLayout (see
+ * App.jsx) and with no links back into the app: a scanned label is an
+ * external entry point, not a place to browse the rest of the dashboard.
  */
 export default function ProductScanPage() {
   const { tenantId, uniqueId } = useParams();
@@ -30,13 +32,7 @@ export default function ProductScanPage() {
   }, [uniqueId]);
 
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-4">
-        <Link to={`/${tenantId}/products`} className="text-sm text-ink-muted hover:text-ink">
-          &larr; Data Barang
-        </Link>
-      </div>
-
+    <div className="mx-auto min-h-screen max-w-lg bg-bg px-4 py-8">
       {loading && (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-6 w-2/3" />
