@@ -14,14 +14,14 @@ class ItemController extends Controller
     public function index(Request $request)
     {
         $items = WarehouseItem::query()
-            ->with('stocks')
+            ->with(['stocks', 'category'])
             ->when($request->string('q')->isNotEmpty(), function ($query) use ($request) {
                 $search = $request->string('q');
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%");
                 });
             })
-            ->when($request->filled('category'), fn ($query) => $query->where('category', $request->string('category')))
+            ->when($request->filled('warehouse_category_id'), fn ($query) => $query->where('warehouse_category_id', $request->integer('warehouse_category_id')))
             ->latest()
             ->paginate($request->integer('limit', 10));
 
@@ -43,7 +43,7 @@ class ItemController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => new ItemResource($item),
+            'data' => new ItemResource($item->load('category')),
             'message' => 'Barang gudang berhasil ditambahkan.',
         ], 201);
     }
@@ -52,7 +52,7 @@ class ItemController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => new ItemResource($item->load(['stocks.location'])),
+            'data' => new ItemResource($item->load(['stocks.location', 'category'])),
             'message' => null,
         ]);
     }
@@ -63,7 +63,7 @@ class ItemController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => new ItemResource($item->load('stocks')),
+            'data' => new ItemResource($item->load(['stocks', 'category'])),
             'message' => 'Barang gudang berhasil diperbarui.',
         ]);
     }

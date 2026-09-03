@@ -98,6 +98,42 @@ class WarehouseModuleTest extends TestCase
             ->assertJsonValidationErrors('sku');
     }
 
+    public function test_owner_can_manage_categories_and_assign_them_to_items(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableWarehouseModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+
+        $categoryId = $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/warehouse/categories', ['name' => 'Elektronik'])
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'Elektronik')
+            ->json('data.id');
+
+        // Duplicate category name within the same tenant is rejected.
+        $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/warehouse/categories', ['name' => 'Elektronik'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('name');
+
+        $itemId = $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/warehouse/items', ['name' => 'Kabel USB-C', 'warehouse_category_id' => $categoryId])
+            ->assertCreated()
+            ->assertJsonPath('data.category_name', 'Elektronik')
+            ->json('data.id');
+
+        // A category still in use by an item can't be deleted.
+        $this->actingAs($owner, 'sanctum')
+            ->deleteJson("/api/warehouse/categories/{$categoryId}")
+            ->assertStatus(422);
+
+        $this->actingAs($owner, 'sanctum')->deleteJson("/api/warehouse/items/{$itemId}")->assertOk();
+
+        $this->actingAs($owner, 'sanctum')
+            ->deleteJson("/api/warehouse/categories/{$categoryId}")
+            ->assertOk();
+    }
+
     public function test_stock_in_and_out_updates_the_stock_table_and_rejects_insufficient_stock(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);

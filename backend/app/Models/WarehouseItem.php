@@ -5,9 +5,10 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['tenant_id', 'sku', 'name', 'category', 'unit', 'price_buy', 'price_sell', 'min_stock', 'notes'])]
+#[Fillable(['tenant_id', 'sku', 'name', 'warehouse_category_id', 'unit', 'price_buy', 'price_sell', 'min_stock', 'notes'])]
 class WarehouseItem extends Model
 {
     use BelongsToTenant;
@@ -18,6 +19,11 @@ class WarehouseItem extends Model
             'price_buy' => 'decimal:2',
             'price_sell' => 'decimal:2',
         ];
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseCategory::class, 'warehouse_category_id');
     }
 
     public function stocks(): HasMany

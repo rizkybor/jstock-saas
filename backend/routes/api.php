@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SenderController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\Warehouse\CategoryController as WarehouseCategoryController;
 use App\Http\Controllers\Api\Warehouse\ItemController as WarehouseItemController;
 use App\Http\Controllers\Api\Warehouse\LocationController as WarehouseLocationController;
 use App\Http\Controllers\Api\Warehouse\PurchaseOrderController as WarehousePurchaseOrderController;
@@ -123,6 +124,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/items/{item}', [WarehouseItemController::class, 'show'])->middleware('permission:warehouse-items.view');
             Route::put('/items/{item}', [WarehouseItemController::class, 'update'])->middleware('permission:warehouse-items.update');
             Route::delete('/items/{item}', [WarehouseItemController::class, 'destroy'])->middleware('permission:warehouse-items.delete');
+
+            // Categories are a sub-concept of item management, not their own
+            // menu — gated by the same warehouse-items permissions.
+            Route::get('/categories', [WarehouseCategoryController::class, 'index'])->middleware('permission:warehouse-items.view');
+            Route::post('/categories', [WarehouseCategoryController::class, 'store'])->middleware('permission:warehouse-items.create');
+            Route::put('/categories/{category}', [WarehouseCategoryController::class, 'update'])->middleware('permission:warehouse-items.update');
+            Route::delete('/categories/{category}', [WarehouseCategoryController::class, 'destroy'])->middleware('permission:warehouse-items.delete');
         });
 
         Route::middleware('menu:warehouse-general,stock')->group(function () {

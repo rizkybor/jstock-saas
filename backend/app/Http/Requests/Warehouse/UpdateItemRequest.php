@@ -23,7 +23,7 @@ class UpdateItemRequest extends FormRequest
                 'nullable', 'string', 'max:100',
                 Rule::unique('warehouse_items', 'sku')->where('tenant_id', tenant_id())->ignore($this->route('item')),
             ],
-            'category' => ['nullable', 'string', 'max:100'],
+            'warehouse_category_id' => ['nullable', Rule::exists('warehouse_categories', 'id')->where('tenant_id', tenant_id())],
             'unit' => ['nullable', 'string', 'max:20'],
             'price_buy' => ['nullable', 'numeric', 'min:0'],
             'price_sell' => ['nullable', 'numeric', 'min:0'],
