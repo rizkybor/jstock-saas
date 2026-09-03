@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
 
-const EMPTY_FORM = { company_name: "", pic_name: "", phone: "", email: "" };
+const EMPTY_FORM = { company_name: "", pic_name: "", pic_position: "", phone: "", email: "" };
 
 const VALIDATION_RULES = [
   { name: "company_name", label: "Nama Perusahaan", required: true },
@@ -69,6 +69,7 @@ export default function ClientsPage() {
     setForm({
       company_name: client.company_name ?? "",
       pic_name: client.pic_name ?? "",
+      pic_position: client.pic_position ?? "",
       phone: client.phone ?? "",
       email: client.email ?? "",
     });
@@ -119,7 +120,7 @@ export default function ClientsPage() {
 
   const columns = [
     { key: "company_name", header: "Perusahaan" },
-    { key: "pic_name", header: "PIC" },
+    { key: "pic_name", header: "PIC", render: (row) => (row.pic_position ? `${row.pic_name} — ${row.pic_position}` : row.pic_name) },
     { key: "phone", header: "Telepon", render: (row) => row.phone ?? "-" },
     { key: "email", header: "Email", render: (row) => row.email ?? "-" },
     {
@@ -223,14 +224,23 @@ export default function ClientsPage() {
               error={fieldErrors.company_name}
               required
             />
-            <Input
-              label="Nama PIC"
-              name="pic_name"
-              value={form.pic_name}
-              onChange={(e) => setForm({ ...form, pic_name: e.target.value })}
-              error={fieldErrors.pic_name}
-              required
-            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Nama PIC"
+                name="pic_name"
+                value={form.pic_name}
+                onChange={(e) => setForm({ ...form, pic_name: e.target.value })}
+                error={fieldErrors.pic_name}
+                required
+              />
+              <Input
+                label="Jabatan"
+                name="pic_position"
+                placeholder="mis. QA Manager"
+                value={form.pic_position}
+                onChange={(e) => setForm({ ...form, pic_position: e.target.value })}
+              />
+            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Telepon"

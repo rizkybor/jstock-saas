@@ -8,7 +8,9 @@ const EMPTY_FORM = {
   senderMode: "existing",
   sender_user_id: "",
   sender_name: "",
+  recipientMode: "existing",
   client_id: "",
+  recipient_name: "",
   recipient_position: "",
   recipient_company: "",
 };
@@ -78,7 +80,8 @@ export default function TransactionCreatePage() {
     if (!form.qty || Number(form.qty) < 1) errors.qty = "Qty wajib diisi.";
     if (form.senderMode === "existing" && !form.sender_user_id) errors.sender = "Pilih pengirim.";
     if (form.senderMode === "new" && !form.sender_name.trim()) errors.sender = "Nama Pengirim wajib diisi.";
-    if (!form.client_id) errors.client_id = "Pilih penerima.";
+    if (form.recipientMode === "existing" && !form.client_id) errors.client_id = "Pilih penerima.";
+    if (form.recipientMode === "new" && !form.recipient_name.trim()) errors.recipient_name = "Nama Penerima wajib diisi.";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -87,7 +90,8 @@ export default function TransactionCreatePage() {
       await apiClient.post("/transactions", {
         sender_user_id: form.senderMode === "existing" ? Number(form.sender_user_id) : undefined,
         sender_name: form.senderMode === "new" ? form.sender_name : undefined,
-        client_id: Number(form.client_id),
+        client_id: form.recipientMode === "existing" ? Number(form.client_id) : undefined,
+        recipient_name: form.recipientMode === "new" ? form.recipient_name : undefined,
         recipient_position: form.recipient_position || undefined,
         recipient_company: form.recipient_company || undefined,
         items: [{ product_id: matchedProduct.id, qty: Number(form.qty) }],
@@ -200,27 +204,45 @@ export default function TransactionCreatePage() {
                 )}
               </div>
 
-              <Select
-                label="Nama Penerima"
-                value={form.client_id}
-                onChange={(e) => {
-                  const client = clients.find((c) => String(c.id) === e.target.value);
-                  setForm({
-                    ...form,
-                    client_id: e.target.value,
-                    recipient_company: client?.company_name ?? form.recipient_company,
-                  });
-                }}
-                error={fieldErrors.client_id}
-                required
-              >
-                <option value="">Pilih klien</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.pic_name} — {c.company_name}
-                  </option>
-                ))}
-              </Select>
+              <div>
+                <Select
+                  label="Nama Penerima"
+                  value={form.recipientMode === "new" ? "__new__" : form.client_id}
+                  onChange={(e) => {
+                    if (e.target.value === "__new__") {
+                      setForm({ ...form, recipientMode: "new", client_id: "" });
+                      return;
+                    }
+                    const client = clients.find((c) => String(c.id) === e.target.value);
+                    setForm({
+                      ...form,
+                      recipientMode: "existing",
+                      client_id: e.target.value,
+                      recipient_position: client?.pic_position ?? form.recipient_position,
+                      recipient_company: client?.company_name ?? form.recipient_company,
+                    });
+                  }}
+                  error={fieldErrors.client_id}
+                  required
+                >
+                  <option value="">Pilih klien</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.pic_name} — {c.company_name}
+                    </option>
+                  ))}
+                  <option value="__new__">+ Penerima baru</option>
+                </Select>
+                {form.recipientMode === "new" && (
+                  <Input
+                    placeholder="Nama penerima baru"
+                    className="mt-2"
+                    value={form.recipient_name}
+                    onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
+                    error={fieldErrors.recipient_name}
+                  />
+                )}
+              </div>
               <Input
                 label="Jabatan"
                 placeholder="mis. QA Manager"
