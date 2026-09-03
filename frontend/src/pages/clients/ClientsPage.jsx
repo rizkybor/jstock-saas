@@ -5,20 +5,7 @@ import { Alert, Badge, Button, ConfirmDialog, DataTable, Input, Modal, PageHeade
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
-import { fetchProvinces } from "../../utils/wilayah";
-
-const EMPTY_ADDRESS = {
-  label: "",
-  province_id: "",
-  province_name: "",
-  regency_id: "",
-  regency_name: "",
-  district_id: "",
-  district_name: "",
-  village_id: "",
-  village_name: "",
-  detail: "",
-};
+import { EMPTY_ADDRESS, fetchProvinces } from "../../utils/wilayah";
 
 const EMPTY_FORM = { company_name: "", pic_name: "", pic_position: "", phone: "", email: "", addresses: [] };
 

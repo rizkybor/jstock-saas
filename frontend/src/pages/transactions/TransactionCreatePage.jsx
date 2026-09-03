@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
 import { Alert, Button, Card, CodeChip, Input, Select, Skeleton } from "../../components/ui";
+import { EMPTY_ADDRESS, fetchProvinces } from "../../utils/wilayah";
 
 const EMPTY_FORM = {
   qty: "",
@@ -13,6 +15,9 @@ const EMPTY_FORM = {
   recipient_name: "",
   recipient_position: "",
   recipient_company: "",
+  addressMode: "existing",
+  address_id: "",
+  newAddress: { ...EMPTY_ADDRESS },
   invoice_number: "",
   no_invoice: false,
 };
@@ -28,6 +33,9 @@ export default function TransactionCreatePage() {
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
+  const [provinces, setProvinces] = useState([]);
+  const [clientAddresses, setClientAddresses] = useState([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -54,7 +62,35 @@ export default function TransactionCreatePage() {
         setLoading(false);
       }
     })();
+    fetchProvinces()
+      .then(setProvinces)
+      .catch(() => setProvinces([]));
   }, []);
+
+  // Klien dipilih sebagai Penerima -> ambil alamat-alamat yang sudah ada
+  // supaya bisa dipilih; kalau belum ada, langsung tawarkan form alamat baru.
+  useEffect(() => {
+    if (form.recipientMode !== "existing" || !form.client_id) {
+      setClientAddresses([]);
+      return;
+    }
+
+    setAddressesLoading(true);
+    apiClient
+      .get(`/clients/${form.client_id}`)
+      .then(({ data }) => {
+        const addresses = data.data.addresses ?? [];
+        setClientAddresses(addresses);
+        setForm((f) =>
+          f.client_id === String(data.data.id) || f.client_id === data.data.id
+            ? { ...f, addressMode: addresses.length > 0 ? "existing" : "new", address_id: "" }
+            : f,
+        );
+      })
+      .catch(() => setClientAddresses([]))
+      .finally(() => setAddressesLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.client_id, form.recipientMode]);
 
   // Meniru "Input ID Barang / scan LOT/Batch — sistem highlight dan
   // auto-pull data barang" dari proses bisnis Transaksi Barang Keluar.
@@ -84,9 +120,20 @@ export default function TransactionCreatePage() {
     if (form.senderMode === "new" && !form.sender_name.trim()) errors.sender = "Nama Pengirim wajib diisi.";
     if (form.recipientMode === "existing" && !form.client_id) errors.client_id = "Pilih penerima.";
     if (form.recipientMode === "new" && !form.recipient_name.trim()) errors.recipient_name = "Nama Penerima wajib diisi.";
+    if (form.recipientMode === "existing" && form.client_id) {
+      if (form.addressMode === "existing" && clientAddresses.length > 0 && !form.address_id) {
+        errors.address_id = "Pilih alamat penerima.";
+      }
+      if (form.addressMode === "new" && !form.newAddress.label.trim()) {
+        errors.address_id = "Isi label alamat baru (mis. Rumah, Kantor).";
+      }
+    }
     if (!form.no_invoice && !form.invoice_number.trim()) errors.invoice_number = "No. Invoice wajib diisi (atau centang Tanpa Invoice).";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
+
+    const usingExistingAddress = form.recipientMode === "existing" && form.addressMode === "existing" && form.address_id;
+    const usingNewAddress = form.recipientMode === "existing" && form.addressMode === "new" && form.newAddress.label.trim();
 
     setSubmitting(true);
     try {
@@ -97,6 +144,8 @@ export default function TransactionCreatePage() {
         recipient_name: form.recipientMode === "new" ? form.recipient_name : undefined,
         recipient_position: form.recipient_position || undefined,
         recipient_company: form.recipient_company || undefined,
+        address_id: usingExistingAddress ? Number(form.address_id) : undefined,
+        address: usingNewAddress ? form.newAddress : undefined,
         no_invoice: form.no_invoice,
         invoice_number: form.no_invoice ? undefined : form.invoice_number,
         items: [{ product_id: matchedProduct.id, qty: Number(form.qty) }],
@@ -260,6 +309,54 @@ export default function TransactionCreatePage() {
                 value={form.recipient_company}
                 onChange={(e) => setForm({ ...form, recipient_company: e.target.value })}
               />
+
+              {form.recipientMode === "existing" && form.client_id && (
+                <div>
+                  <span className="mb-1.5 block text-sm font-semibold text-ink">Alamat Penerima</span>
+                  {addressesLoading ? (
+                    <p className="text-sm text-ink-muted">Memuat alamat...</p>
+                  ) : (
+                    <>
+                      {clientAddresses.length > 0 && (
+                        <select
+                          value={form.addressMode === "new" ? "__new__" : form.address_id}
+                          onChange={(e) =>
+                            e.target.value === "__new__"
+                              ? setForm({ ...form, addressMode: "new", address_id: "" })
+                              : setForm({ ...form, addressMode: "existing", address_id: e.target.value })
+                          }
+                          className="h-10 w-full rounded-lg border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+                        >
+                          <option value="">Pilih alamat</option>
+                          {clientAddresses.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.label}
+                              {a.detail ? ` — ${a.detail}` : ""}
+                            </option>
+                          ))}
+                          <option value="__new__">+ Alamat baru</option>
+                        </select>
+                      )}
+                      {fieldErrors.address_id && <span className="mt-1 block text-xs text-danger">{fieldErrors.address_id}</span>}
+
+                      {form.addressMode === "new" && (
+                        <div className="mt-2">
+                          <AddressFieldset
+                            value={form.newAddress}
+                            provinces={provinces}
+                            onChange={(next) => setForm({ ...form, newAddress: next })}
+                            onRemove={
+                              clientAddresses.length > 0
+                                ? () => setForm({ ...form, addressMode: "existing", newAddress: { ...EMPTY_ADDRESS } })
+                                : undefined
+                            }
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
         </div>

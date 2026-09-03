@@ -214,6 +214,24 @@ export default function TransactionsPage() {
                 </div>
               </div>
 
+              {selected.recipient_address && (
+                <div>
+                  <div className="text-xs text-ink-muted">Alamat Penerima</div>
+                  <div className="text-sm font-medium text-ink">{selected.recipient_address.label}</div>
+                  <div className="text-sm text-ink-muted">
+                    {[
+                      selected.recipient_address.detail,
+                      selected.recipient_address.village_name,
+                      selected.recipient_address.district_name,
+                      selected.recipient_address.regency_name,
+                      selected.recipient_address.province_name,
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || "-"}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <div className="text-xs text-ink-muted">No. Invoice</div>
                 <div className="text-sm font-medium text-ink">

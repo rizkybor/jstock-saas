@@ -99,9 +99,11 @@ export default function AddressFieldset({ value, provinces, onChange, onRemove }
           value={value.label}
           onChange={(e) => onChange({ ...value, label: e.target.value })}
         />
-        <Button type="button" variant="danger" size="sm" onClick={onRemove}>
-          Hapus
-        </Button>
+        {onRemove && (
+          <Button type="button" variant="danger" size="sm" onClick={onRemove}>
+            Hapus
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

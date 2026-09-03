@@ -13,3 +13,16 @@ export const fetchProvinces = () => fetchJson("provinces.json");
 export const fetchRegencies = (provinceId) => fetchJson(`regencies/${provinceId}.json`);
 export const fetchDistricts = (regencyId) => fetchJson(`districts/${regencyId}.json`);
 export const fetchVillages = (districtId) => fetchJson(`villages/${districtId}.json`);
+
+export const EMPTY_ADDRESS = {
+  label: "",
+  province_id: "",
+  province_name: "",
+  regency_id: "",
+  regency_name: "",
+  district_id: "",
+  district_name: "",
+  village_id: "",
+  village_name: "",
+  detail: "",
+};
