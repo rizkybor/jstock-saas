@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreTenantRequest;
 use App\Http\Requests\Admin\UpdateTenantRequest;
 use App\Http\Resources\ModuleResource;
+use App\Http\Resources\SubscriptionResource;
 use App\Http\Resources\TenantResource;
 use App\Models\Module;
 use App\Models\Plan;
@@ -182,6 +183,49 @@ class TenantController extends Controller
             'success' => true,
             'data' => null,
             'message' => "Modul \"{$module->name}\" dinonaktifkan untuk {$tenant->name}.",
+        ]);
+    }
+
+    /**
+     * The tenant's current subscription (plan + status/dates) — what the
+     * Configuration by Tenant ID "Plan" tab reads and lets Super Admin
+     * change.
+     */
+    public function subscription(Tenant $tenant)
+    {
+        return response()->json([
+            'success' => true,
+            'data' => new SubscriptionResource($tenant->subscriptions()->latest()->with('plan')->first()),
+            'message' => null,
+        ]);
+    }
+
+    public function updateSubscription(Request $request, Tenant $tenant)
+    {
+        $data = $request->validate([
+            'plan_id' => ['required', 'integer', 'exists:plans,id'],
+            'status' => ['required', 'string', 'in:trialing,active,past_due,cancelled'],
+            'ends_at' => ['nullable', 'date'],
+        ]);
+
+        $subscription = $tenant->subscriptions()->latest()->first();
+
+        if ($subscription) {
+            $subscription->update($data);
+        } else {
+            $subscription = Subscription::create([
+                'tenant_id' => $tenant->id,
+                'plan_id' => $data['plan_id'],
+                'status' => $data['status'],
+                'started_at' => now(),
+                'ends_at' => $data['ends_at'] ?? null,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => new SubscriptionResource($subscription->load('plan')),
+            'message' => 'Plan tenant berhasil diperbarui.',
         ]);
     }
 

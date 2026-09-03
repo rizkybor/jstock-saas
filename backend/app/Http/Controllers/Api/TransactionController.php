@@ -25,6 +25,14 @@ class TransactionController extends Controller
     {
         $transactions = Transaction::query()
             ->with(['client', 'sender', 'recipient', 'currentApprovalStep'])
+            ->when($request->string('q')->isNotEmpty(), function ($query) use ($request) {
+                $search = $request->string('q');
+                $query->where(function ($query) use ($search) {
+                    $query->where('trx_number', 'like', "%{$search}%")
+                        ->orWhereHas('sender', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('recipient', fn ($q) => $q->where('name', 'like', "%{$search}%"));
+                });
+            })
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
             ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')))

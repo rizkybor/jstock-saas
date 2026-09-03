@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\ApprovalSettingsController as AdminApprovalSettingsController;
 use App\Http\Controllers\Api\Admin\ModuleController as AdminModuleController;
+use App\Http\Controllers\Api\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Api\Admin\RolePermissionController as AdminRolePermissionController;
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
@@ -71,10 +72,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/tenants/{tenant}/modules', [AdminTenantController::class, 'modules']);
         Route::post('/tenants/{tenant}/modules/{module}', [AdminTenantController::class, 'attachModule']);
         Route::delete('/tenants/{tenant}/modules/{module}', [AdminTenantController::class, 'detachModule']);
+        Route::get('/tenants/{tenant}/subscription', [AdminTenantController::class, 'subscription']);
+        Route::put('/tenants/{tenant}/subscription', [AdminTenantController::class, 'updateSubscription']);
         Route::get('/stats', [AdminTenantController::class, 'stats']);
 
         Route::get('/modules', [AdminModuleController::class, 'index']);
         Route::post('/modules', [AdminModuleController::class, 'store']);
+
+        Route::get('/plans', [AdminPlanController::class, 'index']);
+        Route::post('/plans', [AdminPlanController::class, 'store']);
+        Route::put('/plans/{plan}', [AdminPlanController::class, 'update']);
 
         Route::get('/tenants/{tenant}/users', [AdminUserController::class, 'index']);
         Route::post('/tenants/{tenant}/users', [AdminUserController::class, 'store']);
