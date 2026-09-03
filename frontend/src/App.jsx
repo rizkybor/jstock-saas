@@ -5,7 +5,9 @@ import DashboardPage from "./pages/dashboard/DashboardPage";
 import ClientsPage from "./pages/clients/ClientsPage";
 import ProductsPage from "./pages/products/ProductsPage";
 import TransactionsPage from "./pages/transactions/TransactionsPage";
+import LaporanPage from "./pages/reports/LaporanPage";
 import AdminTenantsPage from "./pages/admin/AdminTenantsPage";
+import TenantConfigurationPage from "./pages/admin/TenantConfigurationPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RequirePermission from "./routes/RequirePermission";
 import RequireOwnTenant from "./routes/RequireOwnTenant";
@@ -29,10 +31,12 @@ function App() {
             <Route path="/:tenantId/clients" element={<ClientsPage />} />
             <Route path="/:tenantId/products" element={<ProductsPage />} />
             <Route path="/:tenantId/transactions" element={<TransactionsPage />} />
+            <Route path="/:tenantId/reports" element={<LaporanPage />} />
           </Route>
 
           <Route element={<RequirePermission permission="admin.tenants.view" />}>
             <Route path="/admin/tenants" element={<AdminTenantsPage />} />
+            <Route path="/admin/tenants/:tenantToken" element={<TenantConfigurationPage />} />
           </Route>
         </Route>
       </Route>

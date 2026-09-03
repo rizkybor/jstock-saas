@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, Card, DataTable, Input, PageHeader, Pagination } from "../../components/ui";
+import { Alert, Badge, Button, DataTable, Input, Modal, PageHeader, Pagination } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
@@ -18,11 +18,15 @@ export default function ClientsPage() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [submitting, setSubmitting] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({});
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [deactivatingId, setDeactivatingId] = useState(null);
+
+  const [formMode, setFormMode] = useState(null); // "create" | "edit" | null
+  const [editingClient, setEditingClient] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formError, setFormError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const loadClients = async (page = 1) => {
     setLoading(true);
@@ -42,9 +46,34 @@ export default function ClientsPage() {
     loadClients(1);
   }, []);
 
+  const openCreate = () => {
+    setForm(EMPTY_FORM);
+    setFieldErrors({});
+    setFormError(null);
+    setFormMode("create");
+  };
+
+  const openEdit = (client) => {
+    setEditingClient(client);
+    setForm({
+      company_name: client.company_name ?? "",
+      pic_name: client.pic_name ?? "",
+      phone: client.phone ?? "",
+      email: client.email ?? "",
+    });
+    setFieldErrors({});
+    setFormError(null);
+    setFormMode("edit");
+  };
+
+  const closeForm = () => {
+    setFormMode(null);
+    setEditingClient(null);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError(null);
+    setFormError(null);
 
     const errors = validate(form, VALIDATION_RULES);
     setFieldErrors(errors);
@@ -52,12 +81,15 @@ export default function ClientsPage() {
 
     setSubmitting(true);
     try {
-      await apiClient.post("/clients", form);
-      setForm(EMPTY_FORM);
-      setFieldErrors({});
-      await loadClients(1);
+      if (formMode === "create") {
+        await apiClient.post("/clients", form);
+      } else {
+        await apiClient.put(`/clients/${editingClient.id}`, form);
+      }
+      closeForm();
+      await loadClients(formMode === "create" ? 1 : meta.current_page);
     } catch (err) {
-      setError(err.response?.data?.message ?? "Gagal menambahkan klien.");
+      setFormError(err.response?.data?.message ?? "Gagal menyimpan data klien.");
     } finally {
       setSubmitting(false);
     }
@@ -86,68 +118,43 @@ export default function ClientsPage() {
     },
   ];
 
-  if (can("clients.delete")) {
+  if (can("clients.update") || can("clients.delete")) {
     columns.push({
       key: "actions",
       header: "Aksi",
       render: (row) => (
-        <Button
-          variant="danger"
-          size="sm"
-          loading={deactivatingId === row.id}
-          onClick={() => handleDeactivate(row.id)}
-        >
-          Nonaktifkan
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Can permission="clients.update">
+            <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
+              Edit
+            </Button>
+          </Can>
+          <Can permission="clients.delete">
+            <Button
+              variant="danger"
+              size="sm"
+              loading={deactivatingId === row.id}
+              onClick={() => handleDeactivate(row.id)}
+            >
+              Nonaktifkan
+            </Button>
+          </Can>
+        </div>
       ),
     });
   }
 
   return (
     <div>
-      <PageHeader title="Data Klien" description="Kelola data perusahaan klien dan kontak PIC." />
-
-      <Can permission="clients.create">
-        <Card title="Tambah Klien Baru" className="mb-6">
-          <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Input
-              label="Nama Perusahaan"
-              name="company_name"
-              value={form.company_name}
-              onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-              error={fieldErrors.company_name}
-              required
-            />
-            <Input
-              label="Nama PIC"
-              name="pic_name"
-              value={form.pic_name}
-              onChange={(e) => setForm({ ...form, pic_name: e.target.value })}
-              error={fieldErrors.pic_name}
-              required
-            />
-            <Input
-              label="Telepon"
-              name="phone"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
-            <Input
-              label="Email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              error={fieldErrors.email}
-            />
-            <div className="sm:col-span-2 lg:col-span-4">
-              <Button type="submit" loading={submitting}>
-                {submitting ? "Menyimpan..." : "Tambah Klien"}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      </Can>
+      <PageHeader
+        title="Data Klien"
+        description="Kelola data perusahaan klien dan kontak PIC."
+        action={
+          <Can permission="clients.create">
+            <Button onClick={openCreate}>+ Tambah Klien</Button>
+          </Can>
+        }
+      />
 
       {error && (
         <div className="mb-4">
@@ -170,6 +177,60 @@ export default function ClientsPage() {
           total={meta.total}
           onPageChange={loadClients}
         />
+      )}
+
+      {formMode && (
+        <Modal
+          title={formMode === "create" ? "Tambah Klien Baru" : `Edit Klien — ${editingClient?.company_name}`}
+          description="Data perusahaan klien dan kontak PIC."
+          onClose={closeForm}
+        >
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+            <Input
+              label="Nama Perusahaan"
+              name="company_name"
+              value={form.company_name}
+              onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+              error={fieldErrors.company_name}
+              required
+            />
+            <Input
+              label="Nama PIC"
+              name="pic_name"
+              value={form.pic_name}
+              onChange={(e) => setForm({ ...form, pic_name: e.target.value })}
+              error={fieldErrors.pic_name}
+              required
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Telepon"
+                name="phone"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+              <Input
+                label="Email"
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                error={fieldErrors.email}
+              />
+            </div>
+
+            {formError && <Alert>{formError}</Alert>}
+
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
+              <Button type="button" variant="secondary" onClick={closeForm}>
+                Batal
+              </Button>
+              <Button type="submit" loading={submitting}>
+                {submitting ? "Menyimpan..." : formMode === "create" ? "Tambah Klien" : "Simpan Perubahan"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

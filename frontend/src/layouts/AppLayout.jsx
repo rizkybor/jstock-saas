@@ -8,6 +8,7 @@ const tenantNavItems = (tenantId) => [
   { to: `/${tenantId}/clients`, label: "Data Klien", permission: "clients.view" },
   { to: `/${tenantId}/products`, label: "Data Barang", permission: "products.view" },
   { to: `/${tenantId}/transactions`, label: "Transaksi", permission: "transactions.view" },
+  { to: `/${tenantId}/reports`, label: "Laporan", permission: "reports.view" },
 ];
 
 // Super Admin operates at platform level only — it never sees tenant

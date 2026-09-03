@@ -70,6 +70,24 @@ import { Alert, Badge, Button, Card, CodeChip, DataTable, EmptyState, Input, Mod
 | `EmptyState` | Placeholder saat data/fitur belum ada | `title`, `description`, `action` |
 | `Alert` | Pesan error/sukses/info sebaris | `tone`: `danger` \| `success` \| `info`; render `null` kalau `children` kosong — aman dipakai langsung dengan state error (`<Alert>{error}</Alert>`) |
 | `Pagination` | Navigasi halaman di bawah `DataTable` | `currentPage`, `lastPage`, `total`, `onPageChange(page)`; render `null` otomatis kalau cuma 1 halaman |
+| `Tabs` | Strip tab terkontrol (mis. Configuration by Tenant ID) | `tabs` (`{key, label}[]`), `active`, `onChange(key)` — konten tab sepenuhnya ditentukan pemanggil |
+| `GearIcon` | Ikon gear inline SVG (tombol konfigurasi) | `className` |
+
+### Pola Create/Edit: selalu lewat `Modal`, bukan form inline
+
+Semua form Create/Edit (Data Klien, Data Barang, Transaksi, Tambah Tenant) hidup di dalam `Modal`, dipicu oleh tombol di slot `action` milik `PageHeader` — bukan `Card` yang selalu terlihat di atas tabel:
+
+```jsx
+<PageHeader title="Data Klien" action={<Can permission="clients.create"><Button onClick={openCreate}>+ Tambah Klien</Button></Can>} />
+
+{formMode && (
+  <Modal title={formMode === "create" ? "Tambah Klien Baru" : `Edit — ${editing?.company_name}`} onClose={closeForm}>
+    <form onSubmit={handleSubmit} noValidate>...</form>
+  </Modal>
+)}
+```
+
+Satu state `formMode` (`"create" | "edit" | null`) menentukan judul modal, rule validasi, dan endpoint (`POST` vs `PUT`) — lihat `ClientsPage.jsx`/`ProductsPage.jsx` untuk pola lengkapnya. Field yang tidak relevan di mode edit (mis. `quantity`/`additional_cost` di Data Barang, yang cuma dipakai untuk kalkulasi awal) disembunyikan lewat `{formMode === "create" && ...}`.
 | `StatTile` | Kartu angka ringkasan (dashboard) | `label`, `value`, `delta` (opsional) |
 
 Approve/Reject di `TransactionsPage` memakai `variant="success"` (hijau solid, `#1aae39`) dan `variant="outline-danger"` (putih + border merah `#e5484d`) — bukan `primary`/`secondary` — persis konvensi warna di referensi: hijau selalu berarti "menyetujui", merah-outline berarti "aksi destruktif yang masih perlu konfirmasi visual halus".
@@ -236,6 +254,8 @@ Halaman bisnis tenant hidup di `/:tenantId/dashboard`, `/:tenantId/clients`, dst
 - Frontend **tidak bisa dan tidak perlu** mendekripsi token ini — kuncinya cuma ada di server. Perbandingan (mis. di `RequireOwnTenant`) selalu berupa perbandingan string token, bukan decode.
 - Saat menambah halaman tenant baru, daftarkan sebagai `/:tenantId/nama-halaman` di dalam `<Route element={<RequireOwnTenant />}>` (lihat `App.jsx`), dan bangun link/navigasinya dari `user.tenant_token` (lihat `tenantNavItems()` di `AppLayout.jsx`), bukan menyusun URL manual dari state lain.
 - Untuk endpoint admin per-tenant (`/admin/tenants/{tenant}/...`), backend menerima token yang sama di path — kirim `tenant.token` dari respons `GET /admin/tenants`, jangan pernah `tenant.id` (field itu memang tidak diekspos).
+
+**Configuration by Tenant ID** (`/admin/tenants/:tenantToken`, `TenantConfigurationPage.jsx`): halaman tersendiri (bukan modal) dengan `Tabs` untuk tiap section konfigurasi (saat ini: Profil, Modul). Diakses dari tabel Kelola Tenant lewat ikon `GearIcon` di kolom Aksi — **jangan** taruh Edit/Kelola Modul sebagai tombol/modal terpisah lagi di `AdminTenantsPage`, semua pengaturan per-tenant masuk ke halaman config ini. Kalau nanti nambah section baru (mis. Billing, Users), tambahkan entri ke array `TABS` dan satu blok `{tab === "key" && (...)}`, mengikuti pola tab yang sudah ada.
 
 ## 9. Menambah Komponen Baru
 

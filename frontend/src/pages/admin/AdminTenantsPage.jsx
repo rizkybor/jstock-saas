@@ -1,18 +1,7 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import apiClient from "../../api/client";
-import {
-  Alert,
-  Badge,
-  Button,
-  CodeChip,
-  DataTable,
-  Input,
-  Modal,
-  PageHeader,
-  Pagination,
-  Skeleton,
-  StatTile,
-} from "../../components/ui";
+import { Alert, Badge, Button, DataTable, GearIcon, Input, Modal, PageHeader, Pagination, StatTile } from "../../components/ui";
 import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_TENANT_FORM = {
@@ -33,11 +22,6 @@ const CREATE_RULES = [
   { name: "owner_password", label: "Password Owner", required: true },
 ];
 
-const EDIT_RULES = [
-  { name: "name", label: "Nama Perusahaan", required: true },
-  { name: "email", label: "Email Perusahaan", type: "email" },
-];
-
 export default function AdminTenantsPage() {
   const [tenants, setTenants] = useState([]);
   const [stats, setStats] = useState(null);
@@ -46,20 +30,13 @@ export default function AdminTenantsPage() {
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [catalogModules, setCatalogModules] = useState([]);
 
-  const [moduleTenant, setModuleTenant] = useState(null);
-  const [moduleList, setModuleList] = useState([]);
-  const [moduleLoading, setModuleLoading] = useState(false);
-  const [moduleError, setModuleError] = useState(null);
-
-  const [formMode, setFormMode] = useState(null); // "create" | "edit" | null
-  const [editingTenant, setEditingTenant] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_TENANT_FORM);
   const [selectedModuleIds, setSelectedModuleIds] = useState([]);
   const [formError, setFormError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [statusBusyToken, setStatusBusyToken] = useState(null);
-  const [moduleBusyId, setModuleBusyId] = useState(null);
 
   const loadTenants = async (page = 1) => {
     setLoading(true);
@@ -119,101 +96,35 @@ export default function AdminTenantsPage() {
     }
   };
 
-  const openModules = async (tenant) => {
-    setModuleTenant(tenant);
-    setModuleError(null);
-    setModuleLoading(true);
-    try {
-      const { data } = await apiClient.get(`/admin/tenants/${tenant.token}/modules`);
-      setModuleList(data.data);
-    } catch {
-      setModuleError("Gagal memuat modul tenant ini.");
-    } finally {
-      setModuleLoading(false);
-    }
-  };
-
-  const closeModules = () => {
-    setModuleTenant(null);
-    setModuleList([]);
-  };
-
-  const toggleModule = async (module) => {
-    setModuleError(null);
-    setModuleBusyId(module.id);
-    try {
-      if (module.enabled) {
-        await apiClient.delete(`/admin/tenants/${moduleTenant.token}/modules/${module.id}`);
-      } else {
-        await apiClient.post(`/admin/tenants/${moduleTenant.token}/modules/${module.id}`);
-      }
-      setModuleList((list) => list.map((m) => (m.id === module.id ? { ...m, enabled: !m.enabled } : m)));
-      await loadTenants(meta.current_page);
-    } catch (err) {
-      setModuleError(err.response?.data?.message ?? "Gagal memperbarui modul.");
-    } finally {
-      setModuleBusyId(null);
-    }
-  };
-
   const openCreate = () => {
     setForm(EMPTY_TENANT_FORM);
     setSelectedModuleIds([]);
     setFieldErrors({});
     setFormError(null);
-    setFormMode("create");
+    setCreateOpen(true);
   };
 
-  const openEdit = (tenant) => {
-    setEditingTenant(tenant);
-    setForm({
-      name: tenant.name ?? "",
-      email: tenant.email ?? "",
-      phone: tenant.phone ?? "",
-      address: tenant.address ?? "",
-      owner_name: "",
-      owner_email: "",
-      owner_password: "",
-    });
-    setFieldErrors({});
-    setFormError(null);
-    setFormMode("edit");
-  };
-
-  const closeForm = () => {
-    setFormMode(null);
-    setEditingTenant(null);
-  };
+  const closeCreate = () => setCreateOpen(false);
 
   const toggleSelectedModule = (moduleId) => {
     setSelectedModuleIds((ids) => (ids.includes(moduleId) ? ids.filter((id) => id !== moduleId) : [...ids, moduleId]));
   };
 
-  const handleFormSubmit = async (event) => {
+  const handleCreateSubmit = async (event) => {
     event.preventDefault();
     setFormError(null);
 
-    const rules = formMode === "create" ? CREATE_RULES : EDIT_RULES;
-    const errors = validate(form, rules);
+    const errors = validate(form, CREATE_RULES);
     setFieldErrors(errors);
     if (hasErrors(errors)) return;
 
     setSubmitting(true);
     try {
-      if (formMode === "create") {
-        await apiClient.post("/admin/tenants", { ...form, module_ids: selectedModuleIds });
-      } else {
-        await apiClient.put(`/admin/tenants/${editingTenant.token}`, {
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          address: form.address,
-        });
-      }
-      closeForm();
-      await Promise.all([loadTenants(meta.current_page), loadStats()]);
+      await apiClient.post("/admin/tenants", { ...form, module_ids: selectedModuleIds });
+      closeCreate();
+      await Promise.all([loadTenants(1), loadStats()]);
     } catch (err) {
-      setFormError(err.response?.data?.message ?? "Gagal menyimpan tenant.");
+      setFormError(err.response?.data?.message ?? "Gagal membuat tenant.");
     } finally {
       setSubmitting(false);
     }
@@ -221,7 +132,6 @@ export default function AdminTenantsPage() {
 
   const columns = [
     { key: "name", header: "Nama Perusahaan" },
-    { key: "slug", header: "Slug", render: (row) => <CodeChip>{row.slug}</CodeChip> },
     { key: "status", header: "Status", render: (row) => <Badge status={row.status}>{row.status}</Badge> },
     { key: "users_count", header: "Jumlah User" },
     { key: "plan", header: "Plan", render: (row) => row.plan ?? "-" },
@@ -245,13 +155,15 @@ export default function AdminTenantsPage() {
       key: "actions",
       header: "Aksi",
       render: (row) => (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
-            Edit
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => openModules(row)}>
-            Kelola Modul
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to={`/admin/tenants/${row.token}`}
+            aria-label={`Konfigurasi ${row.name}`}
+            title="Konfigurasi tenant"
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border text-ink-muted hover:bg-surface-2 hover:text-ink"
+          >
+            <GearIcon />
+          </Link>
           <Button
             variant={row.status === "suspended" ? "primary" : "danger"}
             size="sm"
@@ -307,67 +219,14 @@ export default function AdminTenantsPage() {
         />
       )}
 
-      {moduleTenant && (
+      {createOpen && (
         <Modal
-          title="Kelola Modul"
-          description={`Tentukan modul sistem yang aktif untuk "${moduleTenant.name}". Modul baru bisa ditambahkan di sini setelah fitur/proses bisnisnya selesai dibangun.`}
-          onClose={closeModules}
-        >
-          {moduleError && (
-            <div className="mb-3">
-              <Alert>{moduleError}</Alert>
-            </div>
-          )}
-
-          {moduleLoading ? (
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {moduleList.map((module) => (
-                <label
-                  key={module.id}
-                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-surface-2 has-disabled:cursor-not-allowed has-disabled:opacity-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={module.enabled}
-                    disabled={moduleBusyId === module.id}
-                    onChange={() => toggleModule(module)}
-                    className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
-                  />
-                  <div>
-                    <div className="text-sm font-semibold text-ink">{module.name}</div>
-                    {module.description && <div className="text-xs text-ink-muted">{module.description}</div>}
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-5 flex justify-end">
-            <Button variant="secondary" onClick={closeModules}>
-              Tutup
-            </Button>
-          </div>
-        </Modal>
-      )}
-
-      {formMode && (
-        <Modal
-          title={formMode === "create" ? "Tambah Tenant Baru" : `Edit Tenant — ${editingTenant?.name}`}
-          description={
-            formMode === "create"
-              ? "Buat tenant baru beserta akun Owner-nya, dan pilih modul yang langsung aktif."
-              : "Perbarui profil perusahaan tenant ini."
-          }
-          onClose={closeForm}
+          title="Tambah Tenant Baru"
+          description="Buat tenant baru beserta akun Owner-nya, dan pilih modul yang langsung aktif."
+          onClose={closeCreate}
           width="560px"
         >
-          <form onSubmit={handleFormSubmit} noValidate className="flex flex-col gap-4">
+          <form onSubmit={handleCreateSubmit} noValidate className="flex flex-col gap-4">
             <Input
               label="Nama Perusahaan"
               name="name"
@@ -399,80 +258,74 @@ export default function AdminTenantsPage() {
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
 
-            {formMode === "create" && (
-              <>
-                <div className="border-t border-border pt-4">
-                  <p className="mb-3 text-sm font-semibold text-ink">Akun Owner</p>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Input
-                      label="Nama Owner"
-                      name="owner_name"
-                      value={form.owner_name}
-                      onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
-                      error={fieldErrors.owner_name}
-                      required
-                    />
-                    <Input
-                      label="Email Owner"
-                      name="owner_email"
-                      type="email"
-                      value={form.owner_email}
-                      onChange={(e) => setForm({ ...form, owner_email: e.target.value })}
-                      error={fieldErrors.owner_email}
-                      required
-                    />
-                  </div>
-                  <div className="mt-4">
-                    <Input
-                      label="Password Owner"
-                      name="owner_password"
-                      type="password"
-                      hint="Minimal 8 karakter"
-                      value={form.owner_password}
-                      onChange={(e) => setForm({ ...form, owner_password: e.target.value })}
-                      error={fieldErrors.owner_password}
-                      required
-                    />
-                  </div>
-                </div>
+            <div className="border-t border-border pt-4">
+              <p className="mb-3 text-sm font-semibold text-ink">Akun Owner</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="Nama Owner"
+                  name="owner_name"
+                  value={form.owner_name}
+                  onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+                  error={fieldErrors.owner_name}
+                  required
+                />
+                <Input
+                  label="Email Owner"
+                  name="owner_email"
+                  type="email"
+                  value={form.owner_email}
+                  onChange={(e) => setForm({ ...form, owner_email: e.target.value })}
+                  error={fieldErrors.owner_email}
+                  required
+                />
+              </div>
+              <div className="mt-4">
+                <Input
+                  label="Password Owner"
+                  name="owner_password"
+                  type="password"
+                  hint="Minimal 8 karakter"
+                  value={form.owner_password}
+                  onChange={(e) => setForm({ ...form, owner_password: e.target.value })}
+                  error={fieldErrors.owner_password}
+                  required
+                />
+              </div>
+            </div>
 
-                {catalogModules.length > 0 && (
-                  <div className="border-t border-border pt-4">
-                    <p className="mb-3 text-sm font-semibold text-ink">Modul Aktif</p>
-                    <div className="flex flex-col gap-2">
-                      {catalogModules.map((module) => (
-                        <label
-                          key={module.id}
-                          className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-surface-2"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedModuleIds.includes(module.id)}
-                            onChange={() => toggleSelectedModule(module.id)}
-                            className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
-                          />
-                          <div>
-                            <div className="text-sm font-semibold text-ink">{module.name}</div>
-                            {module.description && (
-                              <div className="text-xs text-ink-muted">{module.description}</div>
-                            )}
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+            {catalogModules.length > 0 && (
+              <div className="border-t border-border pt-4">
+                <p className="mb-3 text-sm font-semibold text-ink">Modul Aktif</p>
+                <div className="flex flex-col gap-2">
+                  {catalogModules.map((module) => (
+                    <label
+                      key={module.id}
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-surface-2"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedModuleIds.includes(module.id)}
+                        onChange={() => toggleSelectedModule(module.id)}
+                        className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
+                      />
+                      <div>
+                        <div className="text-sm font-semibold text-ink">{module.name}</div>
+                        {module.description && <div className="text-xs text-ink-muted">{module.description}</div>}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
             )}
 
             {formError && <Alert>{formError}</Alert>}
 
             <div className="flex justify-end gap-2 border-t border-border pt-4">
-              <Button type="button" variant="secondary" onClick={closeForm}>
+              <Button type="button" variant="secondary" onClick={closeCreate}>
                 Batal
               </Button>
               <Button type="submit" loading={submitting}>
-                {submitting ? "Menyimpan..." : formMode === "create" ? "Buat Tenant" : "Simpan Perubahan"}
+                {submitting ? "Menyimpan..." : "Buat Tenant"}
               </Button>
             </div>
           </form>
