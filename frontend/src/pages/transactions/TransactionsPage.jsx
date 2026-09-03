@@ -164,8 +164,11 @@ export default function TransactionsPage() {
               value={form.recipient_company}
               onChange={(e) => setForm({ ...form, recipient_company: e.target.value })}
             />
-            <div className="flex items-end">
-              <Button type="submit" disabled={submitting} className="w-full">
+            <div className="flex flex-col gap-1.5">
+              <span aria-hidden="true" className="text-sm font-semibold text-transparent select-none">
+                Aksi
+              </span>
+              <Button type="submit" disabled={submitting} className="h-10 w-full">
                 {submitting ? "Menyimpan..." : "Submit untuk Approval"}
               </Button>
             </div>
