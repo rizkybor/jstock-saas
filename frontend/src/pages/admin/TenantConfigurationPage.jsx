@@ -4,7 +4,11 @@ import apiClient from "../../api/client";
 import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Skeleton, Tabs } from "../../components/ui";
 import { hasErrors, validate } from "../../utils/validate";
 
-const PROFILE_RULES = [{ name: "name", label: "Nama Perusahaan", required: true }];
+const PROFILE_RULES = [
+  { name: "name", label: "Nama Perusahaan", required: true },
+  { name: "email", label: "Email Perusahaan", type: "email" },
+  { name: "phone", label: "Telepon", type: "phone" },
+];
 
 const TABS = [
   { key: "profile", label: "Profil" },
@@ -518,12 +522,15 @@ export default function TenantConfigurationPage() {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  error={fieldErrors.email}
                 />
                 <Input
                   label="Telepon"
                   name="phone"
+                  placeholder="mis. 08123456789"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  error={fieldErrors.phone}
                 />
               </div>
               <Input

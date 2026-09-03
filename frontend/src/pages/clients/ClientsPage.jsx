@@ -11,6 +11,7 @@ const VALIDATION_RULES = [
   { name: "company_name", label: "Nama Perusahaan", required: true },
   { name: "pic_name", label: "Nama PIC", required: true },
   { name: "email", label: "Email", type: "email" },
+  { name: "phone", label: "Telepon", type: "phone" },
 ];
 
 export default function ClientsPage() {
@@ -255,8 +256,10 @@ export default function ClientsPage() {
               <Input
                 label="Telepon"
                 name="phone"
+                placeholder="mis. 08123456789"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                error={fieldErrors.phone}
               />
               <Input
                 label="Email"

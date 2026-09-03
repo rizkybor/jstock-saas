@@ -17,6 +17,7 @@ const EMPTY_TENANT_FORM = {
 const CREATE_RULES = [
   { name: "name", label: "Nama Perusahaan", required: true },
   { name: "email", label: "Email Perusahaan", type: "email" },
+  { name: "phone", label: "Telepon", type: "phone" },
   { name: "owner_name", label: "Nama Owner", required: true },
   { name: "owner_email", label: "Email Owner", required: true, type: "email" },
   { name: "owner_password", label: "Password Owner", required: true },
@@ -275,8 +276,10 @@ export default function AdminTenantsPage() {
               <Input
                 label="Telepon"
                 name="phone"
+                placeholder="mis. 08123456789"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                error={fieldErrors.phone}
               />
             </div>
             <Input
