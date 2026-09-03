@@ -4,16 +4,18 @@ import apiClient from "../../api/client";
 import { Alert, Skeleton } from "../../components/ui";
 import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, productScanUrl } from "../../utils/barcode";
 
-const formatCurrency = (value) => `Rp ${Number(value).toLocaleString("id-ID")}`;
 const formatDate = (value) =>
   value ? new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-";
 
 /**
  * Landing page for a scanned product QR code — barcodeImageUrl() encodes
  * this exact route for the "qr" type, so a phone camera opens straight
- * here instead of just showing raw text. Rendered outside AppLayout (see
- * App.jsx) and with no links back into the app: a scanned label is an
- * external entry point, not a place to browse the rest of the dashboard.
+ * here instead of just showing raw text. Rendered outside AppLayout and
+ * outside auth entirely (see App.jsx): a scanned label is opened by
+ * whoever has the physical item, not just a logged-in tenant user, so it
+ * hits the public /public/:tenantId/products/scan/:uniqueId endpoint —
+ * which also omits cost/COGS figures the authenticated view has, since
+ * those shouldn't be visible to anyone who scans the label.
  */
 export default function ProductScanPage() {
   const { tenantId, uniqueId } = useParams();
@@ -25,11 +27,11 @@ export default function ProductScanPage() {
     setLoading(true);
     setError(null);
     apiClient
-      .get(`/products/lookup/${encodeURIComponent(uniqueId)}`)
+      .get(`/public/${tenantId}/products/scan/${encodeURIComponent(uniqueId)}`)
       .then(({ data }) => setProduct(data.data))
       .catch((err) => setError(err.response?.data?.message ?? "Barang dengan ID unik tersebut tidak ditemukan."))
       .finally(() => setLoading(false));
-  }, [uniqueId]);
+  }, [tenantId, uniqueId]);
 
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-bg px-4 py-8">
@@ -65,20 +67,8 @@ export default function ProductScanPage() {
               <div className="text-ink">{formatDate(product.input_date)}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Unit Cost</div>
-              <div className="text-ink">{formatCurrency(product.unit_cost)}</div>
-            </div>
-            <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Kuantitas</div>
               <div className="text-ink">{product.stock_qty}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Grand Total Cost</div>
-              <div className="font-semibold text-ink">{formatCurrency(product.grand_total_cost)}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">COGS</div>
-              <div className="text-ink">{formatCurrency(product.cogs)}</div>
             </div>
           </div>
 

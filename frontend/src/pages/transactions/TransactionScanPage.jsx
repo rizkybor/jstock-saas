@@ -9,9 +9,11 @@ import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, transactionScanUrl }
  * encodes this exact route for the "qr" type, so a phone camera opens
  * straight here instead of just showing raw text. Read-only: approving
  * or rejecting still happens from the Transaksi list. Rendered outside
- * AppLayout (see App.jsx) and with no links back into the app: a
- * scanned label is an external entry point, not a place to browse the
- * rest of the dashboard.
+ * AppLayout and outside auth entirely (see App.jsx): a courier confirming
+ * delivery by scanning the label has no jstock account, so this hits the
+ * public /public/:tenantId/transactions/scan/:trxNumber endpoint — which
+ * also omits money figures (total, item subtotal) the authenticated view
+ * has.
  */
 export default function TransactionScanPage() {
   const { tenantId, trxNumber } = useParams();
@@ -23,11 +25,11 @@ export default function TransactionScanPage() {
     setLoading(true);
     setError(null);
     apiClient
-      .get(`/transactions/lookup/${encodeURIComponent(trxNumber)}`)
+      .get(`/public/${tenantId}/transactions/scan/${encodeURIComponent(trxNumber)}`)
       .then(({ data }) => setTransaction(data.data))
       .catch((err) => setError(err.response?.data?.message ?? "Transaksi dengan No. Transaksi tersebut tidak ditemukan."))
       .finally(() => setLoading(false));
-  }, [trxNumber]);
+  }, [tenantId, trxNumber]);
 
   const items = transaction?.items ?? [];
 

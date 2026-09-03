@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductSeriesController;
+use App\Http\Controllers\Api\PublicScanController;
 use App\Http\Controllers\Api\RecipientController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SenderController;
@@ -31,6 +32,17 @@ Route::get('/ping', fn () => response()->json(['success' => true, 'message' => '
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+
+// Landing endpoints for a scanned QR code/barcode label — deliberately
+// outside auth:sanctum (a courier or warehouse worker scanning a physical
+// label has no jstock account). Throttled since {tenant}/{uniqueId} or
+// {tenant}/{trxNumber} could otherwise be brute-forced to enumerate
+// records; see PublicScanController's docblock for the rest of the
+// tenant-isolation and data-exposure safeguards.
+Route::middleware('throttle:30,1')->group(function () {
+    Route::get('/public/{tenant}/products/scan/{uniqueId}', [PublicScanController::class, 'product']);
+    Route::get('/public/{tenant}/transactions/scan/{trxNumber}', [PublicScanController::class, 'transaction']);
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);

@@ -27,15 +27,16 @@ function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
-      <Route element={<ProtectedRoute />}>
-        {/* Barcode scan destinations render standalone, outside AppLayout —
-            no sidebar, no nav — since a scanned label is an external entry
-            point into the app, not a normal in-dashboard navigation. */}
-        <Route element={<RequireOwnTenant />}>
-          <Route path="/:tenantId/products/scan/:uniqueId" element={<ProductScanPage />} />
-          <Route path="/:tenantId/transactions/scan/:trxNumber" element={<TransactionScanPage />} />
-        </Route>
+      {/* Barcode scan destinations render standalone, outside AppLayout and
+          outside auth entirely — a scanned label is opened by whoever has
+          the physical item (e.g. a courier with no jstock account), not
+          just a logged-in tenant user, so these hit public, unauthenticated
+          API endpoints (see PublicScanController on the backend) instead of
+          RequireOwnTenant/ProtectedRoute. */}
+      <Route path="/:tenantId/products/scan/:uniqueId" element={<ProductScanPage />} />
+      <Route path="/:tenantId/transactions/scan/:trxNumber" element={<TransactionScanPage />} />
 
+      <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route element={<RequireOwnTenant />}>
             <Route path="/:tenantId/dashboard" element={<DashboardPage />} />
