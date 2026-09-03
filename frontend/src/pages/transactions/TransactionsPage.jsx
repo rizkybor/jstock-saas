@@ -19,7 +19,7 @@ const EMPTY_FORM = {
 const formatCurrency = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
 export default function TransactionsPage() {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [products, setProducts] = useState([]);
   const [senders, setSenders] = useState([]);
@@ -187,49 +187,73 @@ export default function TransactionsPage() {
     { key: "sender", header: "Pengirim", render: (row) => row.sender?.name ?? "-" },
     { key: "recipient", header: "Penerima", render: (row) => row.recipient?.name ?? "-" },
     { key: "total", header: "Total", render: (row) => formatCurrency(row.total) },
-    { key: "status", header: "Status", render: (row) => <Badge status={row.status}>{row.status}</Badge> },
+    {
+      key: "status",
+      header: "Status",
+      render: (row) => (
+        <div className="flex flex-col gap-0.5">
+          <Badge status={row.status}>{row.status}</Badge>
+          {row.status === "pending" && row.pending_approval && (
+            <span className="text-xs text-ink-muted">
+              Menunggu: {row.pending_approval.label || row.pending_approval.role}
+            </span>
+          )}
+        </div>
+      ),
+    },
   ];
 
   if (can("transactions.approve") || can("transactions.delete")) {
     columns.push({
       key: "actions",
       header: "Aksi",
-      render: (row) =>
-        row.status === "pending" && (
-          <div className="flex flex-wrap gap-2">
-            <Can permission="transactions.approve">
-              <Button
-                variant="success"
-                size="sm"
-                loading={actionId === row.id && actionType === "approve"}
-                disabled={actionId === row.id && actionType !== "approve"}
-                onClick={() => handleApprove(row.id)}
-              >
-                Approve
-              </Button>
-              <Button
-                variant="outline-danger"
-                size="sm"
-                loading={actionId === row.id && actionType === "reject"}
-                disabled={actionId === row.id && actionType !== "reject"}
-                onClick={() => handleReject(row.id)}
-              >
-                Reject
-              </Button>
-            </Can>
-            <Can permission="transactions.delete">
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={actionId === row.id && actionType === "cancel"}
-                disabled={actionId === row.id && actionType !== "cancel"}
-                onClick={() => handleCancel(row.id)}
-              >
-                Batalkan
-              </Button>
-            </Can>
-          </div>
-        ),
+      render: (row) => {
+        const isMyTurn = !row.pending_approval || row.pending_approval.role === user?.role;
+
+        return (
+          row.status === "pending" && (
+            <div className="flex flex-wrap gap-2">
+              <Can permission="transactions.approve">
+                {isMyTurn ? (
+                  <>
+                    <Button
+                      variant="success"
+                      size="sm"
+                      loading={actionId === row.id && actionType === "approve"}
+                      disabled={actionId === row.id && actionType !== "approve"}
+                      onClick={() => handleApprove(row.id)}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      loading={actionId === row.id && actionType === "reject"}
+                      disabled={actionId === row.id && actionType !== "reject"}
+                      onClick={() => handleReject(row.id)}
+                    >
+                      Reject
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-xs text-ink-muted">Bukan giliran Anda</span>
+                )}
+              </Can>
+              <Can permission="transactions.delete">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={actionId === row.id && actionType === "cancel"}
+                  disabled={actionId === row.id && actionType !== "cancel"}
+                  onClick={() => handleCancel(row.id)}
+                >
+                  Batalkan
+                </Button>
+              </Can>
+            </div>
+          )
+        );
+      },
     });
   }
 

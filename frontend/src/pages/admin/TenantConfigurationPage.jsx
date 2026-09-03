@@ -11,6 +11,7 @@ const TABS = [
   { key: "modules", label: "Modul" },
   { key: "users", label: "Pengguna" },
   { key: "roles", label: "Roles & Permission" },
+  { key: "approval", label: "Approval" },
 ];
 
 const ROLE_LABELS = {
@@ -68,6 +69,14 @@ export default function TenantConfigurationPage() {
   const [userFormError, setUserFormError] = useState(null);
   const [savingUser, setSavingUser] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
+
+  const [requiresApproval, setRequiresApproval] = useState(true);
+  const [approvalSteps, setApprovalSteps] = useState([]);
+  const [approvalLoading, setApprovalLoading] = useState(true);
+  const [approvalError, setApprovalError] = useState(null);
+  const [approvalMessage, setApprovalMessage] = useState(null);
+  const [approvalWarnings, setApprovalWarnings] = useState([]);
+  const [savingApproval, setSavingApproval] = useState(false);
 
   const loadTenant = async () => {
     setLoading(true);
@@ -131,11 +140,26 @@ export default function TenantConfigurationPage() {
     }
   };
 
+  const loadApprovalSettings = async () => {
+    setApprovalLoading(true);
+    setApprovalError(null);
+    try {
+      const { data } = await apiClient.get(`/admin/tenants/${tenantToken}/approval-settings`);
+      setRequiresApproval(data.data.requires_approval);
+      setApprovalSteps(data.data.steps.map((s) => ({ role: s.role, label: s.label ?? "" })));
+    } catch {
+      setApprovalError("Gagal memuat pengaturan approval tenant ini.");
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadTenant();
     loadModules();
     loadRoles();
     loadUsers();
+    loadApprovalSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantToken]);
 
@@ -230,6 +254,54 @@ export default function TenantConfigurationPage() {
   };
 
   const currentRole = roles.find((r) => r.role === selectedRole);
+
+  const addApprovalStep = () => {
+    setApprovalSteps((list) => [...list, { role: roles[0]?.role ?? "", label: "" }]);
+  };
+
+  const updateApprovalStep = (index, patch) => {
+    setApprovalSteps((list) => list.map((step, i) => (i === index ? { ...step, ...patch } : step)));
+  };
+
+  const removeApprovalStep = (index) => {
+    setApprovalSteps((list) => list.filter((_, i) => i !== index));
+  };
+
+  const moveApprovalStep = (index, direction) => {
+    setApprovalSteps((list) => {
+      const target = index + direction;
+      if (target < 0 || target >= list.length) return list;
+      const next = [...list];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const saveApprovalSettings = async () => {
+    setApprovalError(null);
+    setApprovalMessage(null);
+    setApprovalWarnings([]);
+
+    if (requiresApproval && approvalSteps.some((s) => !s.role.trim())) {
+      setApprovalError("Setiap tahap approval harus memilih role.");
+      return;
+    }
+
+    setSavingApproval(true);
+    try {
+      const { data } = await apiClient.put(`/admin/tenants/${tenantToken}/approval-settings`, {
+        requires_approval: requiresApproval,
+        steps: requiresApproval ? approvalSteps.map((s) => ({ role: s.role, label: s.label || null })) : [],
+      });
+      setApprovalSteps(data.data.steps.map((s) => ({ role: s.role, label: s.label ?? "" })));
+      setApprovalWarnings(data.warnings ?? []);
+      setApprovalMessage("Pengaturan approval berhasil disimpan.");
+    } catch (err) {
+      setApprovalError(err.response?.data?.message ?? "Gagal menyimpan pengaturan approval.");
+    } finally {
+      setSavingApproval(false);
+    }
+  };
 
   const openCreateUser = () => {
     setEditingUser(null);
@@ -625,6 +697,138 @@ export default function TenantConfigurationPage() {
                     </Button>
                     <Button variant="secondary" onClick={resetRolePermissions} loading={resettingRole} disabled={!currentRole?.is_custom}>
                       Reset ke Default
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {tab === "approval" && (
+            <div className="max-w-2xl">
+              <p className="mb-4 text-sm text-ink-muted">
+                Atur apakah Transaksi Barang Keluar tenant ini perlu di-approve, dan bila ya, tahapan role apa saja yang
+                harus menyetujui secara berurutan sebelum stok dipotong & invoice dibuat.
+              </p>
+
+              {approvalError && (
+                <div className="mb-3">
+                  <Alert>{approvalError}</Alert>
+                </div>
+              )}
+
+              {approvalLoading ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <label className="mb-4 flex cursor-pointer items-center gap-2 text-sm font-semibold text-ink">
+                    <input
+                      type="checkbox"
+                      checked={requiresApproval}
+                      onChange={(e) => setRequiresApproval(e.target.checked)}
+                      className="h-4 w-4 cursor-pointer accent-primary"
+                    />
+                    Transaksi memerlukan approval
+                  </label>
+
+                  {!requiresApproval && (
+                    <Alert tone="info">
+                      Approval dimatikan — setiap Transaksi Barang Keluar akan langsung berstatus "approved" saat dibuat,
+                      stok langsung terpotong dan invoice langsung terbit.
+                    </Alert>
+                  )}
+
+                  {requiresApproval && (
+                    <>
+                      {approvalSteps.length === 0 ? (
+                        <Alert tone="info">
+                          Belum ada tahap approval — mode sederhana aktif: siapa pun dengan izin "transactions.approve"
+                          bisa langsung approve dalam satu langkah.
+                        </Alert>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {approvalSteps.map((step, index) => (
+                            <div key={index} className="flex items-center gap-2 rounded-lg border border-border p-3">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xs font-semibold text-ink-muted">
+                                {index + 1}
+                              </span>
+                              <select
+                                value={step.role}
+                                onChange={(e) => updateApprovalStep(index, { role: e.target.value })}
+                                className="h-10 flex-1 rounded border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+                              >
+                                <option value="">Pilih role</option>
+                                {roles.map((r) => (
+                                  <option key={r.role} value={r.role}>
+                                    {ROLE_LABELS[r.role] ?? r.role}
+                                  </option>
+                                ))}
+                              </select>
+                              <Input
+                                placeholder="Label tahap (opsional)"
+                                className="flex-1"
+                                value={step.label}
+                                onChange={(e) => updateApprovalStep(index, { label: e.target.value })}
+                              />
+                              <div className="flex shrink-0 gap-1">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  disabled={index === 0}
+                                  onClick={() => moveApprovalStep(index, -1)}
+                                >
+                                  ↑
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  disabled={index === approvalSteps.length - 1}
+                                  onClick={() => moveApprovalStep(index, 1)}
+                                >
+                                  ↓
+                                </Button>
+                                <Button type="button" variant="danger" size="sm" onClick={() => removeApprovalStep(index)}>
+                                  Hapus
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-3">
+                        <Button type="button" variant="secondary" onClick={addApprovalStep} disabled={roles.length === 0}>
+                          + Tambah Tahap
+                        </Button>
+                      </div>
+                    </>
+                  )}
+
+                  {approvalWarnings.length > 0 && (
+                    <div className="mt-4 flex flex-col gap-2">
+                      {approvalWarnings.map((warning, i) => (
+                        <Alert key={i} tone="info">
+                          {warning}
+                        </Alert>
+                      ))}
+                    </div>
+                  )}
+
+                  {approvalMessage && (
+                    <div className="mt-4">
+                      <Alert tone="success">{approvalMessage}</Alert>
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <Button onClick={saveApprovalSettings} loading={savingApproval}>
+                      {savingApproval ? "Menyimpan..." : "Simpan Pengaturan Approval"}
                     </Button>
                   </div>
                 </>
