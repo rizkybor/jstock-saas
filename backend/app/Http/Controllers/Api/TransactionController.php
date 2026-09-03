@@ -26,7 +26,7 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
         $transactions = Transaction::query()
-            ->with(['client', 'sender', 'recipient', 'currentApprovalStep'])
+            ->with(['client', 'sender', 'recipient', 'currentApprovalStep', 'items.product'])
             ->when($request->string('q')->isNotEmpty(), function ($query) use ($request) {
                 $search = $request->string('q');
                 $query->where(function ($query) use ($search) {
