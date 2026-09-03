@@ -360,19 +360,21 @@ export default function ProductsPage() {
               />
             )}
 
-            <div className="flex items-end gap-2">
-              <Input
-                label="LOT / Batch"
-                name="lot_batch"
-                placeholder="LOT-..."
-                hint="Kosongkan untuk generate otomatis"
-                className="flex-1"
-                value={form.lot_batch}
-                onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
-              />
-              <Button type="button" variant="secondary" onClick={generateLotPreview}>
-                Auto-generate
-              </Button>
+            <div>
+              <div className="flex items-end gap-2">
+                <Input
+                  label="LOT / Batch"
+                  name="lot_batch"
+                  placeholder="LOT-..."
+                  className="flex-1"
+                  value={form.lot_batch}
+                  onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
+                />
+                <Button type="button" variant="secondary" onClick={generateLotPreview}>
+                  Auto-generate
+                </Button>
+              </div>
+              <span className="mt-1.5 block text-xs text-ink-muted">Kosongkan untuk generate otomatis</span>
             </div>
 
             <Input
@@ -479,41 +481,35 @@ export default function ProductsPage() {
               required
             />
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Select
-                label="Jenis Gas"
-                name="product_series_id"
-                value={form.product_series_id}
-                onChange={(e) => setForm({ ...form, product_series_id: e.target.value })}
-              >
-                <option value="">Tanpa Jenis Gas</option>
-                {series.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Tanggal Input"
-                name="input_date"
-                type="date"
-                value={form.input_date}
-                onChange={(e) => setForm({ ...form, input_date: e.target.value })}
-              />
-            </div>
+            <Select
+              label="Jenis Gas"
+              name="product_series_id"
+              value={form.product_series_id}
+              onChange={(e) => setForm({ ...form, product_series_id: e.target.value })}
+            >
+              <option value="">Tanpa Jenis Gas</option>
+              {series.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
 
-            <div className="flex items-end gap-2">
-              <Input
-                label="LOT / Batch Number"
-                name="lot_batch"
-                placeholder="LOT-..."
-                className="flex-1"
-                value={form.lot_batch}
-                onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
-              />
-              <Button type="button" variant="secondary" onClick={generateLotPreview}>
-                Auto-generate
-              </Button>
+            <div>
+              <div className="flex items-end gap-2">
+                <Input
+                  label="LOT / Batch Number"
+                  name="lot_batch"
+                  placeholder="LOT-..."
+                  className="flex-1"
+                  value={form.lot_batch}
+                  onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
+                />
+                <Button type="button" variant="secondary" onClick={generateLotPreview}>
+                  Auto-generate
+                </Button>
+              </div>
+              <span className="mt-1.5 block text-xs text-ink-muted">Kosongkan untuk generate otomatis</span>
             </div>
 
             <Input
@@ -555,15 +551,24 @@ export default function ProductsPage() {
               />
             </div>
 
-            <Input
-              label="Biaya Tambahan"
-              name="additional_cost"
-              type="number"
-              min="0"
-              hint="Opsional, mis. ongkos kirim"
-              value={form.additional_cost}
-              onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
-            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Biaya Tambahan"
+                name="additional_cost"
+                type="number"
+                min="0"
+                hint="Opsional, mis. ongkos kirim"
+                value={form.additional_cost}
+                onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
+              />
+              <Input
+                label="Tanggal Input"
+                name="input_date"
+                type="date"
+                value={form.input_date}
+                onChange={(e) => setForm({ ...form, input_date: e.target.value })}
+              />
+            </div>
 
             <div className="rounded-lg bg-surface-2 p-3">
               <div className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Kalkulasi Otomatis (Ilustratif)</div>
