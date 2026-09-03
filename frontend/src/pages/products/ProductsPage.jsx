@@ -1,27 +1,26 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
+import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_CREATE_FORM = {
   name: "",
+  seriesMode: "existing",
   product_series_id: "",
+  new_series_name: "",
+  new_series_unit_cost: "",
   lot_batch: "",
   unique_id: "",
   item_detail: "",
-  unit_cost: "",
   quantity: "",
-  additional_cost: "",
   input_date: "",
 };
 
 const CREATE_RULES = [
   { name: "name", label: "Nama Barang", required: true },
-  { name: "unit_cost", label: "Unit Cost", required: true, type: "number", min: 0 },
-  { name: "quantity", label: "Qty", required: true, type: "number", min: 1 },
-  { name: "additional_cost", label: "Biaya Tambahan", type: "number", min: 0 },
+  { name: "quantity", label: "Kuantitas", required: true, type: "number", min: 1 },
 ];
 
 const EDIT_RULES = [
@@ -30,8 +29,17 @@ const EDIT_RULES = [
   { name: "stock_qty", label: "Stok", required: true, type: "number", min: 0 },
 ];
 
-const formatCurrency = (value) => `Rp ${value.toLocaleString("id-ID")}`;
+const formatCurrency = (value) => `Rp ${Number(value).toLocaleString("id-ID")}`;
 const formatDate = (value) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-");
+
+// Nama Jenis Gas -> tone badge, hanya untuk pembeda visual cepat di tabel.
+const seriesBadgeTone = (name = "") => {
+  const upper = name.toUpperCase();
+  if (upper.includes("H2S")) return "pending";
+  if (upper.includes("CO") && !upper.includes("CO2")) return "rejected";
+  if (upper.includes("CH4")) return "trial";
+  return "cancelled";
+};
 
 export default function ProductsPage() {
   const { can } = useAuth();
@@ -124,19 +132,53 @@ export default function ProductsPage() {
     setEditingProduct(null);
   };
 
+  const generateLotPreview = () => setForm((f) => ({ ...f, lot_batch: "" }));
+
+  const selectedSeries = series.find((s) => String(s.id) === String(form.product_series_id));
+  const previewUnitCost = form.seriesMode === "new" ? Number(form.new_series_unit_cost || 0) : Number(selectedSeries?.unit_cost ?? 0);
+  const previewQty = Number(form.quantity || 0);
+  const previewGrandTotal = previewUnitCost * previewQty;
+  const previewCogs = previewQty > 0 ? previewGrandTotal / previewQty : 0;
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError(null);
 
     const rules = formMode === "create" ? CREATE_RULES : EDIT_RULES;
     const errors = validate(form, rules);
+    if (formMode === "create") {
+      if (form.seriesMode === "existing" && !form.product_series_id) {
+        errors.product_series_id = "Pilih Jenis Gas.";
+      }
+      if (form.seriesMode === "new") {
+        if (!form.new_series_name.trim()) errors.new_series_name = "Nama Jenis Gas wajib diisi.";
+        if (!form.new_series_unit_cost || Number(form.new_series_unit_cost) < 0) errors.new_series_unit_cost = "Unit Cost wajib diisi.";
+      }
+    }
     setFieldErrors(errors);
     if (hasErrors(errors)) return;
 
     setSubmitting(true);
     try {
       if (formMode === "create") {
-        await apiClient.post("/products", form);
+        let seriesId = form.product_series_id;
+        if (form.seriesMode === "new") {
+          const { data } = await apiClient.post("/product-series", {
+            name: form.new_series_name,
+            unit_cost: form.new_series_unit_cost,
+          });
+          seriesId = data.data.id;
+        }
+        await apiClient.post("/products", {
+          name: form.name,
+          product_series_id: seriesId,
+          lot_batch: form.lot_batch || undefined,
+          unique_id: form.unique_id || undefined,
+          item_detail: form.item_detail || undefined,
+          quantity: form.quantity,
+          input_date: form.input_date || undefined,
+        });
+        await loadSeries();
       } else {
         await apiClient.put(`/products/${editingProduct.id}`, form);
       }
@@ -163,13 +205,20 @@ export default function ProductsPage() {
   };
 
   const columns = [
-    { key: "name", header: "Nama Barang" },
+    {
+      key: "name",
+      header: "Nama Barang",
+      render: (row) => (
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-ink">{row.name}</span>
+          {row.series?.name && <Badge status={seriesBadgeTone(row.series.name)}>{row.series.name}</Badge>}
+        </div>
+      ),
+    },
     { key: "lot_batch", header: "LOT/Batch", render: (row) => <CodeChip>{row.lot_batch}</CodeChip> },
-    { key: "series", header: "Kategori", render: (row) => row.series?.name ?? "-" },
     { key: "input_date", header: "Tgl Input", render: (row) => formatDate(row.input_date) },
-    { key: "unit_cost", header: "Unit Cost", render: (row) => formatCurrency(row.unit_cost) },
-    { key: "grand_total_cost", header: "Grand Total Cost", render: (row) => formatCurrency(row.grand_total_cost) },
-    { key: "cogs", header: "COGS/unit", render: (row) => formatCurrency(row.cogs) },
+    { key: "grand_total_cost", header: "Grand Total Cost", render: (row) => <span className="font-semibold">{formatCurrency(row.grand_total_cost)}</span> },
+    { key: "cogs", header: "COGS", render: (row) => formatCurrency(row.cogs) },
     { key: "stock_qty", header: "Stok" },
   ];
 
@@ -221,7 +270,7 @@ export default function ProductsPage() {
           className="min-w-56 flex-1"
         />
         <Select value={seriesFilter} onChange={(e) => setSeriesFilter(e.target.value)}>
-          <option value="">Semua Kategori</option>
+          <option value="">Semua Jenis Gas</option>
           {series.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -251,9 +300,148 @@ export default function ProductsPage() {
         />
       )}
 
-      {formMode && (
+      {formMode === "create" && (
+        <Modal title="Tambah Barang" description="Isi detail barang & LOT/Batch baru." onClose={closeForm} width="640px">
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+            <Input
+              label="Nama Barang"
+              name="name"
+              placeholder="mis. Gas Kalibrasi CH4 2.5%"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              error={fieldErrors.name}
+              required
+            />
+
+            <div>
+              <span className="mb-1.5 block text-sm font-semibold text-ink">
+                Jenis Gas<span className="ml-0.5 text-danger">*</span>
+              </span>
+              <select
+                value={form.seriesMode === "new" ? "__new__" : form.product_series_id}
+                onChange={(e) =>
+                  e.target.value === "__new__"
+                    ? setForm({ ...form, seriesMode: "new", product_series_id: "" })
+                    : setForm({ ...form, seriesMode: "existing", product_series_id: e.target.value })
+                }
+                className="h-10 w-full rounded-lg border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
+              >
+                <option value="">Pilih Jenis Gas</option>
+                {series.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.unit_cost != null ? ` — ${formatCurrency(s.unit_cost)}` : " — belum ada harga"}
+                  </option>
+                ))}
+                <option value="__new__">+ Jenis Gas Baru</option>
+              </select>
+              {fieldErrors.product_series_id && <span className="mt-1 block text-xs text-danger">{fieldErrors.product_series_id}</span>}
+            </div>
+
+            {form.seriesMode === "new" && (
+              <div className="grid grid-cols-1 gap-4 rounded-lg border border-border p-3 sm:grid-cols-2">
+                <Input
+                  label="Nama Jenis Gas Baru"
+                  placeholder="mis. CH4 — 2.5%"
+                  value={form.new_series_name}
+                  onChange={(e) => setForm({ ...form, new_series_name: e.target.value })}
+                  error={fieldErrors.new_series_name}
+                  required
+                />
+                <Input
+                  label="Unit Cost"
+                  type="number"
+                  min="0"
+                  value={form.new_series_unit_cost}
+                  onChange={(e) => setForm({ ...form, new_series_unit_cost: e.target.value })}
+                  error={fieldErrors.new_series_unit_cost}
+                  required
+                />
+              </div>
+            )}
+
+            <div className="flex items-end gap-2">
+              <Input
+                label="LOT / Batch"
+                name="lot_batch"
+                placeholder="LOT-..."
+                hint="Kosongkan untuk generate otomatis"
+                className="flex-1"
+                value={form.lot_batch}
+                onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
+              />
+              <Button type="button" variant="secondary" onClick={generateLotPreview}>
+                Auto-generate
+              </Button>
+            </div>
+
+            <Input
+              label="ID Unik"
+              name="unique_id"
+              placeholder="BRG-..."
+              value={form.unique_id}
+              onChange={(e) => setForm({ ...form, unique_id: e.target.value })}
+            />
+
+            <Textarea
+              label="Item Detail"
+              name="item_detail"
+              placeholder="Deskripsi tabung, tekanan, sertifikat, dll."
+              value={form.item_detail}
+              onChange={(e) => setForm({ ...form, item_detail: e.target.value })}
+            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Kuantitas"
+                name="quantity"
+                type="number"
+                min="1"
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                error={fieldErrors.quantity}
+                required
+              />
+              <Input
+                label="Tanggal Input"
+                name="input_date"
+                type="date"
+                value={form.input_date}
+                onChange={(e) => setForm({ ...form, input_date: e.target.value })}
+                hint="Kosongkan untuk hari ini"
+              />
+            </div>
+
+            <div className="rounded-lg bg-surface-2 p-3">
+              <div className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Kalkulasi Otomatis (Ilustratif)</div>
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="text-ink-muted">Grand Total Cost</span>
+                <span className="font-semibold text-ink">{formatCurrency(previewGrandTotal)}</span>
+              </div>
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <span className="text-ink-muted">COGS</span>
+                <span className="font-semibold text-ink">{formatCurrency(previewCogs)}</span>
+              </div>
+              <div className="text-xs text-ink-faint">Metode kalkulasi belum final dikonfirmasi klien.</div>
+            </div>
+
+            {formError && <Alert>{formError}</Alert>}
+
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
+              <Button type="button" variant="secondary" onClick={closeForm}>
+                Batal
+              </Button>
+              <Button type="submit" loading={submitting}>
+                {submitting ? "Menyimpan..." : "Simpan Barang"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {formMode === "edit" && (
         <Modal
-          title={formMode === "create" ? "Tambah Barang" : `Edit Barang — ${editingProduct?.name}`}
+          title={`Edit Barang — ${editingProduct?.name}`}
           description="LOT/Batch bisa diisi manual atau dikosongkan untuk digenerate otomatis oleh sistem. Grand Total Cost & COGS dihitung otomatis."
           onClose={closeForm}
           width="640px"
@@ -262,7 +450,7 @@ export default function ProductsPage() {
             <Input
               label="Nama Barang"
               name="name"
-              placeholder="mis. 8AL 25PPM H2S/100PPM CO/2.5%CH4/18%O2/N2"
+              placeholder="mis. Gas Kalibrasi CH4 2.5%"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               error={fieldErrors.name}
@@ -271,12 +459,12 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Select
-                label="Kategori / Product Series"
+                label="Jenis Gas"
                 name="product_series_id"
                 value={form.product_series_id}
                 onChange={(e) => setForm({ ...form, product_series_id: e.target.value })}
               >
-                <option value="">Tanpa kategori</option>
+                <option value="">Tanpa Jenis Gas</option>
                 {series.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -289,7 +477,6 @@ export default function ProductsPage() {
                 type="date"
                 value={form.input_date}
                 onChange={(e) => setForm({ ...form, input_date: e.target.value })}
-                hint={formMode === "create" ? "Kosongkan untuk hari ini" : undefined}
               />
             </div>
 
@@ -298,7 +485,6 @@ export default function ProductsPage() {
                 label="LOT / Batch Number"
                 name="lot_batch"
                 placeholder="LOT-..."
-                hint={formMode === "create" ? "Kosongkan untuk generate otomatis" : undefined}
                 value={form.lot_batch}
                 onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
               />
@@ -330,42 +516,17 @@ export default function ProductsPage() {
                 error={fieldErrors.unit_cost}
                 required
               />
-              {formMode === "create" ? (
-                <Input
-                  label="Qty"
-                  name="quantity"
-                  type="number"
-                  min="1"
-                  value={form.quantity}
-                  onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-                  error={fieldErrors.quantity}
-                  required
-                />
-              ) : (
-                <Input
-                  label="Stok"
-                  name="stock_qty"
-                  type="number"
-                  min="0"
-                  value={form.stock_qty}
-                  onChange={(e) => setForm({ ...form, stock_qty: e.target.value })}
-                  error={fieldErrors.stock_qty}
-                  required
-                />
-              )}
-            </div>
-            {formMode === "create" && (
               <Input
-                label="Biaya Tambahan"
-                name="additional_cost"
+                label="Stok"
+                name="stock_qty"
                 type="number"
                 min="0"
-                hint="Opsional, mis. ongkos kirim — ditambahkan ke Grand Total Cost"
-                value={form.additional_cost}
-                onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
-                error={fieldErrors.additional_cost}
+                value={form.stock_qty}
+                onChange={(e) => setForm({ ...form, stock_qty: e.target.value })}
+                error={fieldErrors.stock_qty}
+                required
               />
-            )}
+            </div>
 
             {formError && <Alert>{formError}</Alert>}
 
@@ -374,7 +535,7 @@ export default function ProductsPage() {
                 Batal
               </Button>
               <Button type="submit" loading={submitting}>
-                {submitting ? "Menyimpan..." : formMode === "create" ? "Simpan Barang" : "Simpan Perubahan"}
+                {submitting ? "Menyimpan..." : "Simpan Perubahan"}
               </Button>
             </div>
           </form>
