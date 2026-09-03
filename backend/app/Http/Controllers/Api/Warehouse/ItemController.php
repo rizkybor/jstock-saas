@@ -11,6 +11,22 @@ use Illuminate\Http\Request;
 
 class ItemController extends Controller
 {
+    /**
+     * A donated/inventory-grant item has no purchase transaction behind
+     * it — force price_buy/price_sell to null server-side regardless of
+     * what the client sent, since the frontend only disables those fields
+     * rather than guaranteeing they're empty.
+     */
+    private function withGrantPricingRule(array $data, bool $currentlyGrant = false): array
+    {
+        if ($data['is_inventory_grant'] ?? $currentlyGrant) {
+            $data['price_buy'] = null;
+            $data['price_sell'] = null;
+        }
+
+        return $data;
+    }
+
     public function index(Request $request)
     {
         $items = WarehouseItem::query()
@@ -39,7 +55,7 @@ class ItemController extends Controller
 
     public function store(StoreItemRequest $request)
     {
-        $item = WarehouseItem::create($request->validated());
+        $item = WarehouseItem::create($this->withGrantPricingRule($request->validated()));
 
         return response()->json([
             'success' => true,
@@ -59,7 +75,7 @@ class ItemController extends Controller
 
     public function update(UpdateItemRequest $request, WarehouseItem $item)
     {
-        $item->update($request->validated());
+        $item->update($this->withGrantPricingRule($request->validated(), $item->is_inventory_grant));
 
         return response()->json([
             'success' => true,

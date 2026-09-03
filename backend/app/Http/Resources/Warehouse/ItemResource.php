@@ -23,6 +23,8 @@ class ItemResource extends JsonResource
             'price_sell' => $this->price_sell !== null ? (float) $this->price_sell : null,
             'min_stock' => $this->min_stock,
             'notes' => $this->notes,
+            'is_inventory_grant' => $this->is_inventory_grant,
+            'inventory_grant_source' => $this->inventory_grant_source,
             'total_stock' => $this->when($this->relationLoaded('stocks'), fn () => (int) $this->stocks->sum('qty')),
             'created_at' => $this->created_at,
         ];

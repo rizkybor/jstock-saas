@@ -98,6 +98,55 @@ class WarehouseModuleTest extends TestCase
             ->assertJsonValidationErrors('sku');
     }
 
+    public function test_creating_an_item_with_a_blank_unit_defaults_to_pcs_instead_of_erroring(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableWarehouseModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+
+        $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/warehouse/items', ['name' => 'Barang Tanpa Satuan', 'unit' => ''])
+            ->assertCreated()
+            ->assertJsonPath('data.unit', 'pcs');
+    }
+
+    public function test_an_inventory_grant_item_requires_a_source_and_forces_prices_to_null(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableWarehouseModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+
+        // Marking it a grant without saying who it's from is rejected.
+        $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/warehouse/items', ['name' => 'Meja Kantor', 'is_inventory_grant' => true])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('inventory_grant_source');
+
+        // Even if the client sends prices anyway, a grant item is stored with none.
+        $itemId = $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/warehouse/items', [
+                'name' => 'Meja Kantor',
+                'is_inventory_grant' => true,
+                'inventory_grant_source' => 'Dinas Sosial Kota',
+                'price_buy' => 500000,
+                'price_sell' => 750000,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.is_inventory_grant', true)
+            ->assertJsonPath('data.inventory_grant_source', 'Dinas Sosial Kota')
+            ->assertJsonPath('data.price_buy', null)
+            ->assertJsonPath('data.price_sell', null)
+            ->json('data.id');
+
+        // Un-marking it as a grant lets prices be set normally again.
+        $this->actingAs($owner, 'sanctum')
+            ->putJson("/api/warehouse/items/{$itemId}", ['is_inventory_grant' => false, 'price_buy' => 500000, 'price_sell' => 750000])
+            ->assertOk()
+            ->assertJsonPath('data.is_inventory_grant', false)
+            ->assertJsonPath('data.price_buy', 500000)
+            ->assertJsonPath('data.price_sell', 750000);
+    }
+
     public function test_owner_can_manage_categories_and_assign_them_to_items(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);

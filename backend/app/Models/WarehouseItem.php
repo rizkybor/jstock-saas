@@ -8,7 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['tenant_id', 'sku', 'name', 'warehouse_category_id', 'unit', 'price_buy', 'price_sell', 'min_stock', 'notes'])]
+#[Fillable([
+    'tenant_id', 'sku', 'name', 'warehouse_category_id', 'unit', 'price_buy', 'price_sell', 'min_stock', 'notes',
+    'is_inventory_grant', 'inventory_grant_source',
+])]
 class WarehouseItem extends Model
 {
     use BelongsToTenant;
@@ -18,6 +21,7 @@ class WarehouseItem extends Model
         return [
             'price_buy' => 'decimal:2',
             'price_sell' => 'decimal:2',
+            'is_inventory_grant' => 'boolean',
         ];
     }
 

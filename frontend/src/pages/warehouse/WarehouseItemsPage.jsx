@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Button, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Tabs, Textarea } from "../../components/ui";
+import { Alert, Badge, Button, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Tabs, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
 
-const EMPTY_FORM = { name: "", sku: "", warehouse_category_id: "", unit: "", price_buy: "", price_sell: "", min_stock: "", notes: "" };
+const EMPTY_FORM = {
+  name: "",
+  sku: "",
+  warehouse_category_id: "",
+  unit: "",
+  price_buy: "",
+  price_sell: "",
+  min_stock: "",
+  notes: "",
+  is_inventory_grant: false,
+  inventory_grant_source: "",
+};
 const EMPTY_CATEGORY_FORM = { name: "" };
 
 const VALIDATION_RULES = [{ name: "name", label: "Nama Barang", required: true }];
@@ -106,6 +117,8 @@ export default function WarehouseItemsPage() {
       price_sell: item.price_sell ?? "",
       min_stock: item.min_stock ?? "",
       notes: item.notes ?? "",
+      is_inventory_grant: item.is_inventory_grant ?? false,
+      inventory_grant_source: item.inventory_grant_source ?? "",
     });
   };
 
@@ -114,20 +127,33 @@ export default function WarehouseItemsPage() {
     setEditingItem(null);
   };
 
+  const toggleInventoryGrant = (checked) =>
+    setForm((f) => ({
+      ...f,
+      is_inventory_grant: checked,
+      // A donated/inventory-grant item has no purchase price to record.
+      price_buy: checked ? "" : f.price_buy,
+      price_sell: checked ? "" : f.price_sell,
+    }));
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError(null);
 
     const errors = validate(form, VALIDATION_RULES);
+    if (form.is_inventory_grant && !form.inventory_grant_source.trim()) {
+      errors.inventory_grant_source = "Sumber inventaris/hibah wajib diisi.";
+    }
     setFieldErrors(errors);
     if (hasErrors(errors)) return;
 
     const payload = {
       ...form,
       warehouse_category_id: form.warehouse_category_id || null,
-      price_buy: form.price_buy === "" ? null : Number(form.price_buy),
-      price_sell: form.price_sell === "" ? null : Number(form.price_sell),
+      price_buy: form.is_inventory_grant || form.price_buy === "" ? null : Number(form.price_buy),
+      price_sell: form.is_inventory_grant || form.price_sell === "" ? null : Number(form.price_sell),
       min_stock: form.min_stock === "" ? null : Number(form.min_stock),
+      inventory_grant_source: form.is_inventory_grant ? form.inventory_grant_source : null,
     };
 
     setSubmitting(true);
@@ -221,12 +247,25 @@ export default function WarehouseItemsPage() {
 
   const columns = [
     { key: "sku", header: "SKU", render: (row) => row.sku ?? "-" },
-    { key: "name", header: "Nama Barang" },
+    {
+      key: "name",
+      header: "Nama Barang",
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <span>{row.name}</span>
+          {row.is_inventory_grant && <Badge status="lime">Hibah</Badge>}
+        </div>
+      ),
+    },
     { key: "category_name", header: "Kategori", render: (row) => row.category_name ?? "-" },
     { key: "unit", header: "Satuan", render: (row) => row.unit ?? "-" },
     { key: "total_stock", header: "Stok", render: (row) => row.total_stock ?? 0 },
-    { key: "price_buy", header: "Harga Beli", render: (row) => formatCurrency(row.price_buy) },
-    { key: "price_sell", header: "Harga Jual", render: (row) => formatCurrency(row.price_sell) },
+    {
+      key: "price_buy",
+      header: "Harga Beli",
+      render: (row) => (row.is_inventory_grant ? `Hibah (${row.inventory_grant_source ?? "-"})` : formatCurrency(row.price_buy)),
+    },
+    { key: "price_sell", header: "Harga Jual", render: (row) => (row.is_inventory_grant ? "-" : formatCurrency(row.price_sell)) },
   ];
 
   if (can("warehouse-items.update") || can("warehouse-items.delete")) {
@@ -423,6 +462,8 @@ export default function WarehouseItemsPage() {
                 min="0"
                 value={form.price_buy}
                 onChange={(e) => setForm({ ...form, price_buy: e.target.value })}
+                disabled={form.is_inventory_grant}
+                hint={form.is_inventory_grant ? "Nonaktif — barang inventaris/hibah tidak punya harga beli." : undefined}
               />
               <Input
                 label="Harga Jual"
@@ -431,8 +472,30 @@ export default function WarehouseItemsPage() {
                 min="0"
                 value={form.price_sell}
                 onChange={(e) => setForm({ ...form, price_sell: e.target.value })}
+                disabled={form.is_inventory_grant}
+                hint={form.is_inventory_grant ? "Nonaktif — barang inventaris/hibah tidak punya harga jual." : undefined}
               />
             </div>
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.is_inventory_grant}
+                onChange={(e) => toggleInventoryGrant(e.target.checked)}
+                className="h-4 w-4 cursor-pointer accent-primary"
+              />
+              <span className="font-semibold text-ink">Inventaris/Hibah</span>
+            </label>
+            {form.is_inventory_grant && (
+              <Input
+                label="Dari Siapa (Inventaris/Hibah)"
+                value={form.inventory_grant_source}
+                onChange={(e) => setForm({ ...form, inventory_grant_source: e.target.value })}
+                error={fieldErrors.inventory_grant_source}
+                required
+              />
+            )}
+
             <Textarea label="Catatan" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
 
             {formError && <Alert>{formError}</Alert>}
