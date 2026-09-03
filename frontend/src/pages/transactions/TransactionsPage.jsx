@@ -1,42 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select } from "../../components/ui";
+import { Alert, Badge, Button, CodeChip, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
-import Can from "../../routes/Can";
-
-const EMPTY_FORM = {
-  qty: "",
-  senderMode: "existing",
-  sender_id: "",
-  sender_name: "",
-  recipientMode: "existing",
-  recipient_id: "",
-  recipient_name: "",
-  recipient_position: "",
-  recipient_company: "",
-};
-
-const formatCurrency = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
 export default function TransactionsPage() {
   const { can, user } = useAuth();
+  const { tenantId } = useParams();
   const [transactions, setTransactions] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [senders, setSenders] = useState([]);
-  const [recipients, setRecipients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({});
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
-  const [actionId, setActionId] = useState(null);
-  const [actionType, setActionType] = useState(null);
 
   const [listSearch, setListSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+
+  const [selected, setSelected] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(null);
+  const [rejectionNote, setRejectionNote] = useState("");
+  const [actionType, setActionType] = useState(null);
+  const [acting, setActing] = useState(false);
 
   const loadTransactions = async (page = 1) => {
     setLoading(true);
@@ -54,27 +38,8 @@ export default function TransactionsPage() {
     }
   };
 
-  const loadProducts = async () => {
-    // Not paginated on purpose: pencarian barang butuh seluruh stok, bukan cuma halaman 1.
-    const { data } = await apiClient.get("/products", { params: { limit: 1000 } });
-    setProducts(data.data);
-  };
-
-  const loadSenders = async () => {
-    const { data } = await apiClient.get("/senders");
-    setSenders(data.data);
-  };
-
-  const loadRecipients = async () => {
-    const { data } = await apiClient.get("/recipients");
-    setRecipients(data.data);
-  };
-
   useEffect(() => {
     loadTransactions(1);
-    loadProducts();
-    loadSenders();
-    loadRecipients();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -83,111 +48,55 @@ export default function TransactionsPage() {
     loadTransactions(1);
   };
 
-  // Meniru "Input ID Barang / scan LOT/Batch + ID Unik — sistem highlight
-  // dan auto-pull data barang" dari proses bisnis Transaksi Barang Keluar.
-  const matchedProduct = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return null;
-    return (
-      products.find((p) => p.lot_batch?.toLowerCase() === query || p.unique_id?.toLowerCase() === query) ??
-      products.find(
-        (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.lot_batch?.toLowerCase().includes(query) ||
-          p.unique_id?.toLowerCase().includes(query),
-      ) ??
-      null
-    );
-  }, [searchQuery, products]);
-
-  const openCreate = () => {
-    setForm(EMPTY_FORM);
-    setSearchQuery("");
-    setFieldErrors({});
-    setError(null);
-    setFormOpen(true);
-  };
-
-  const closeForm = () => setFormOpen(false);
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError(null);
-
-    const errors = {};
-    if (!matchedProduct) errors.product = "Barang tidak ditemukan — periksa ID Barang atau LOT/Batch.";
-    if (!form.qty || Number(form.qty) < 1) errors.qty = "Qty wajib diisi.";
-    if (form.senderMode === "existing" && !form.sender_id) errors.sender = "Pilih pengirim.";
-    if (form.senderMode === "new" && !form.sender_name.trim()) errors.sender = "Nama Pengirim wajib diisi.";
-    if (form.recipientMode === "existing" && !form.recipient_id) errors.recipient = "Pilih penerima.";
-    if (form.recipientMode === "new" && !form.recipient_name.trim()) errors.recipient = "Nama Penerima wajib diisi.";
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-
-    setSubmitting(true);
+  const openDetail = async (row) => {
+    setSelected({ id: row.id });
+    setRejectionNote("");
+    setDetailError(null);
+    setDetailLoading(true);
     try {
-      await apiClient.post("/transactions", {
-        sender_id: form.senderMode === "existing" ? Number(form.sender_id) : undefined,
-        sender_name: form.senderMode === "new" ? form.sender_name : undefined,
-        recipient_id: form.recipientMode === "existing" ? Number(form.recipient_id) : undefined,
-        recipient_name: form.recipientMode === "new" ? form.recipient_name : undefined,
-        recipient_position: form.recipientMode === "new" ? form.recipient_position : undefined,
-        recipient_company: form.recipientMode === "new" ? form.recipient_company : undefined,
-        items: [{ product_id: matchedProduct.id, qty: Number(form.qty) }],
-      });
-      closeForm();
-      await Promise.all([loadTransactions(1), loadProducts(), loadSenders(), loadRecipients()]);
+      const { data } = await apiClient.get(`/transactions/${row.id}`);
+      setSelected(data.data);
     } catch (err) {
-      setError(err.response?.data?.message ?? "Gagal membuat transaksi.");
+      setDetailError(err.response?.data?.message ?? "Gagal memuat detail transaksi.");
     } finally {
-      setSubmitting(false);
+      setDetailLoading(false);
     }
   };
 
-  const handleApprove = async (id) => {
-    setError(null);
-    setActionId(id);
+  const closeDetail = () => setSelected(null);
+
+  const handleApprove = async () => {
+    setDetailError(null);
     setActionType("approve");
+    setActing(true);
     try {
-      await apiClient.patch(`/transactions/${id}/approve`);
-      await Promise.all([loadTransactions(meta.current_page), loadProducts()]);
+      await apiClient.patch(`/transactions/${selected.id}/approve`);
+      closeDetail();
+      await loadTransactions(meta.current_page);
     } catch (err) {
-      setError(err.response?.data?.message ?? "Gagal approve transaksi.");
+      setDetailError(err.response?.data?.message ?? "Gagal approve transaksi.");
     } finally {
-      setActionId(null);
+      setActing(false);
       setActionType(null);
     }
   };
 
-  const handleReject = async (id) => {
-    const note = prompt("Alasan penolakan:");
-    if (!note) return;
-    setError(null);
-    setActionId(id);
+  const handleReject = async () => {
+    if (!rejectionNote.trim()) {
+      setDetailError("Catatan penolakan wajib diisi untuk reject.");
+      return;
+    }
+    setDetailError(null);
     setActionType("reject");
+    setActing(true);
     try {
-      await apiClient.patch(`/transactions/${id}/reject`, { rejection_note: note });
+      await apiClient.patch(`/transactions/${selected.id}/reject`, { rejection_note: rejectionNote });
+      closeDetail();
       await loadTransactions(meta.current_page);
     } catch (err) {
-      setError(err.response?.data?.message ?? "Gagal reject transaksi.");
+      setDetailError(err.response?.data?.message ?? "Gagal reject transaksi.");
     } finally {
-      setActionId(null);
-      setActionType(null);
-    }
-  };
-
-  const handleCancel = async (id) => {
-    if (!confirm("Batalkan transaksi ini?")) return;
-    setError(null);
-    setActionId(id);
-    setActionType("cancel");
-    try {
-      await apiClient.delete(`/transactions/${id}`);
-      await loadTransactions(meta.current_page);
-    } catch (err) {
-      setError(err.response?.data?.message ?? "Gagal membatalkan transaksi.");
-    } finally {
-      setActionId(null);
+      setActing(false);
       setActionType(null);
     }
   };
@@ -197,7 +106,6 @@ export default function TransactionsPage() {
     { key: "item", header: "Barang", render: (row) => row.items?.[0]?.product_name ?? "-" },
     { key: "sender", header: "Pengirim", render: (row) => row.sender?.name ?? "-" },
     { key: "recipient", header: "Penerima", render: (row) => row.recipient?.name ?? "-" },
-    { key: "total", header: "Total", render: (row) => formatCurrency(row.total) },
     {
       key: "status",
       header: "Status",
@@ -214,69 +122,22 @@ export default function TransactionsPage() {
     },
   ];
 
-  if (can("transactions.approve") || can("transactions.delete")) {
-    columns.push({
-      key: "actions",
-      header: "Aksi",
-      render: (row) => {
-        const isMyTurn = !row.pending_approval || row.pending_approval.role === user?.role;
-
-        return (
-          row.status === "pending" && (
-            <div className="flex flex-wrap gap-2">
-              <Can permission="transactions.approve">
-                {isMyTurn ? (
-                  <>
-                    <Button
-                      variant="success"
-                      size="sm"
-                      loading={actionId === row.id && actionType === "approve"}
-                      disabled={actionId === row.id && actionType !== "approve"}
-                      onClick={() => handleApprove(row.id)}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      loading={actionId === row.id && actionType === "reject"}
-                      disabled={actionId === row.id && actionType !== "reject"}
-                      onClick={() => handleReject(row.id)}
-                    >
-                      Reject
-                    </Button>
-                  </>
-                ) : (
-                  <span className="text-xs text-ink-muted">Bukan giliran Anda</span>
-                )}
-              </Can>
-              <Can permission="transactions.delete">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={actionId === row.id && actionType === "cancel"}
-                  disabled={actionId === row.id && actionType !== "cancel"}
-                  onClick={() => handleCancel(row.id)}
-                >
-                  Batalkan
-                </Button>
-              </Can>
-            </div>
-          )
-        );
-      },
-    });
-  }
+  const item = selected?.items?.[0];
+  const isPending = selected?.status === "pending";
+  const isMyTurn = !selected?.pending_approval || selected?.pending_approval.role === user?.role;
+  const canAct = isPending && isMyTurn && (can("transactions.approve") || can("transactions.delete"));
 
   return (
     <div>
       <PageHeader
-        title="Transaksi Barang Keluar"
-        description="Catat pengeluaran barang dan pantau status approval."
+        title="Transaksi"
+        description="Riwayat transaksi barang keluar"
         action={
-          <Can permission="transactions.create">
-            <Button onClick={openCreate}>+ Transaksi Keluar</Button>
-          </Can>
+          can("transactions.create") && (
+            <Link to={`/${tenantId}/transactions/new`}>
+              <Button>+ Transaksi Keluar</Button>
+            </Link>
+          )
         }
       />
 
@@ -313,6 +174,7 @@ export default function TransactionsPage() {
         emptyMessage="Belum ada transaksi."
         startIndex={(meta.current_page - 1) * 10}
         loading={loading}
+        onRowClick={openDetail}
       />
       {!loading && (
         <Pagination
@@ -323,139 +185,93 @@ export default function TransactionsPage() {
         />
       )}
 
-      {formOpen && (
-        <Modal title="Transaksi Barang Keluar" description="Cari barang, lalu lengkapi data pengirim & penerima." onClose={closeForm} width="640px">
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-            <Input
-              label="Cari ID Barang / Scan LOT/Batch"
-              placeholder="mis. LOT-20260902-4WIG atau nama barang"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              error={fieldErrors.product}
-              required
-            />
+      {selected && (
+        <Modal title="Approve / Reject Transaksi" onClose={closeDetail} width="480px">
+          {detailLoading ? (
+            <div className="py-6 text-center text-sm text-ink-muted">Memuat detail...</div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <CodeChip>{selected.trx_number}</CodeChip>
 
-            {searchQuery.trim() && (
-              <div className={`rounded-lg p-4 ${matchedProduct ? "bg-surface-2" : "bg-danger-soft"}`}>
-                {matchedProduct ? (
+              <div className="rounded-lg bg-surface-2 p-4">
+                <div className="font-semibold text-ink">{item?.product_name ?? "-"}</div>
+                <div className="mt-1 text-sm text-ink-muted">
+                  LOT: {item?.lot_batch ?? "-"} · Qty: {item?.qty ?? "-"}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-ink-muted">Pengirim</div>
+                  <div className="text-sm font-medium text-ink">{selected.sender?.name ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-ink-muted">Penerima</div>
+                  <div className="text-sm font-medium text-ink">
+                    {selected.recipient?.name ?? "-"}
+                    {selected.recipient?.position ? ` — ${selected.recipient.position}` : ""}
+                  </div>
+                </div>
+              </div>
+
+              {!isPending && (
+                <div>
+                  <Badge status={selected.status}>{selected.status}</Badge>
+                  {selected.status === "rejected" && selected.rejection_note && (
+                    <p className="mt-2 text-sm text-ink-muted">Catatan: {selected.rejection_note}</p>
+                  )}
+                  {selected.status === "approved" && selected.invoice && (
+                    <p className="mt-2 text-sm text-ink-muted">Invoice: {selected.invoice.invoice_number}</p>
+                  )}
+                </div>
+              )}
+
+              {isPending && !isMyTurn && (
+                <Alert tone="info">
+                  Menunggu approval dari role "{selected.pending_approval?.role}" — bukan giliran Anda.
+                </Alert>
+              )}
+
+              {canAct && (
+                <Textarea
+                  label="Catatan Penolakan (wajib untuk Reject)"
+                  placeholder="Alasan penolakan..."
+                  value={rejectionNote}
+                  onChange={(e) => setRejectionNote(e.target.value)}
+                />
+              )}
+
+              {detailError && <Alert>{detailError}</Alert>}
+
+              <div className="flex justify-end gap-2 border-t border-border pt-4">
+                <Button type="button" variant="secondary" onClick={closeDetail}>
+                  Batal
+                </Button>
+                {canAct && (
                   <>
-                    <div className="mb-2 text-xs font-semibold tracking-wide text-success uppercase">✓ Barang Ditemukan</div>
-                    <div className="mb-1 text-base font-semibold text-ink">{matchedProduct.name}</div>
-                    <div className="mb-2">
-                      <CodeChip>{matchedProduct.lot_batch}</CodeChip>
-                    </div>
-                    <div className="text-sm text-ink-muted">Stok tersedia: {matchedProduct.stock_qty}</div>
+                    <Button
+                      type="button"
+                      variant="outline-danger"
+                      loading={acting && actionType === "reject"}
+                      disabled={acting && actionType !== "reject"}
+                      onClick={handleReject}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="success"
+                      loading={acting && actionType === "approve"}
+                      disabled={acting && actionType !== "approve"}
+                      onClick={handleApprove}
+                    >
+                      Approve
+                    </Button>
                   </>
-                ) : (
-                  <div className="text-sm text-danger">Barang tidak ditemukan — periksa kembali ID Barang atau LOT/Batch.</div>
                 )}
               </div>
-            )}
-
-            <Input
-              label="Qty"
-              name="qty"
-              type="number"
-              min="1"
-              value={form.qty}
-              onChange={(e) => setForm({ ...form, qty: e.target.value })}
-              error={fieldErrors.qty}
-              required
-            />
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Select
-                  label="Data Pengirim"
-                  value={form.senderMode === "new" ? "__new__" : form.sender_id}
-                  onChange={(e) =>
-                    e.target.value === "__new__"
-                      ? setForm({ ...form, senderMode: "new", sender_id: "" })
-                      : setForm({ ...form, senderMode: "existing", sender_id: e.target.value })
-                  }
-                  error={fieldErrors.sender}
-                  required
-                >
-                  <option value="">Pilih pengirim</option>
-                  {senders.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                  <option value="__new__">+ Pengirim baru</option>
-                </Select>
-                {form.senderMode === "new" && (
-                  <Input
-                    name="sender_name"
-                    placeholder="Nama pengirim baru"
-                    className="mt-2"
-                    value={form.sender_name}
-                    onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
-                  />
-                )}
-              </div>
-
-              <div>
-                <Select
-                  label="Data Penerima"
-                  value={form.recipientMode === "new" ? "__new__" : form.recipient_id}
-                  onChange={(e) =>
-                    e.target.value === "__new__"
-                      ? setForm({ ...form, recipientMode: "new", recipient_id: "" })
-                      : setForm({ ...form, recipientMode: "existing", recipient_id: e.target.value })
-                  }
-                  error={fieldErrors.recipient}
-                  required
-                >
-                  <option value="">Pilih penerima</option>
-                  {recipients.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} {r.company ? `— ${r.company}` : ""}
-                    </option>
-                  ))}
-                  <option value="__new__">+ Penerima baru</option>
-                </Select>
-              </div>
             </div>
-
-            {form.recipientMode === "new" && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Input
-                  name="recipient_name"
-                  placeholder="Nama penerima"
-                  value={form.recipient_name}
-                  onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                />
-                <Input
-                  name="recipient_position"
-                  placeholder="Jabatan"
-                  value={form.recipient_position}
-                  onChange={(e) => setForm({ ...form, recipient_position: e.target.value })}
-                />
-                <Input
-                  name="recipient_company"
-                  placeholder="Perusahaan"
-                  value={form.recipient_company}
-                  onChange={(e) => setForm({ ...form, recipient_company: e.target.value })}
-                />
-              </div>
-            )}
-
-            {matchedProduct && form.qty > 0 && (
-              <div className="text-right text-sm font-semibold text-ink">
-                Total Otomatis: {formatCurrency(matchedProduct.unit_cost * Number(form.qty || 0))}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 border-t border-border pt-4">
-              <Button type="button" variant="secondary" onClick={closeForm}>
-                Batal
-              </Button>
-              <Button type="submit" loading={submitting}>
-                {submitting ? "Menyimpan..." : "Submit untuk Approval"}
-              </Button>
-            </div>
-          </form>
+          )}
         </Modal>
       )}
     </div>

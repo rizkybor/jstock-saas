@@ -7,6 +7,7 @@ import Skeleton from "./Skeleton";
  * Pass startIndex (0-based) when paginating so numbering continues across pages.
  * Pass loading to render skeleton rows (headers stay visible) instead of the
  * real data — keeps the table's shape stable across the loading transition.
+ * Pass onRowClick(row) to make rows clickable (e.g. open a detail modal).
  */
 export default function DataTable({
   columns,
@@ -17,6 +18,7 @@ export default function DataTable({
   startIndex = 0,
   loading = false,
   skeletonRows = 5,
+  onRowClick,
 }) {
   const allColumns = showIndex
     ? [{ key: "__index", header: "No.", render: (_row, index) => startIndex + index + 1 }, ...columns]
@@ -61,7 +63,8 @@ export default function DataTable({
             rows.map((row, index) => (
               <tr
                 key={rowKey(row)}
-                className="border-b border-border transition-colors last:border-0 hover:bg-surface-2"
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={`border-b border-border transition-colors last:border-0 hover:bg-surface-2 ${onRowClick ? "cursor-pointer" : ""}`}
               >
                 {allColumns.map((col) => (
                   <td key={col.key} className="px-4 py-3 text-ink">
