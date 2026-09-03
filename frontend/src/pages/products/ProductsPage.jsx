@@ -10,23 +10,24 @@ const EMPTY_CREATE_FORM = {
   seriesMode: "existing",
   product_series_id: "",
   new_series_name: "",
-  new_series_unit_cost: "",
   lot_batch: "",
   unique_id: "",
   item_detail: "",
+  unit_cost: "",
   quantity: "",
   input_date: "",
 };
 
 const CREATE_RULES = [
   { name: "name", label: "Nama Barang", required: true },
+  { name: "unit_cost", label: "Unit Cost", required: true, type: "number", min: 0 },
   { name: "quantity", label: "Kuantitas", required: true, type: "number", min: 1 },
 ];
 
 const EDIT_RULES = [
   { name: "name", label: "Nama Barang", required: true },
   { name: "unit_cost", label: "Unit Cost", required: true, type: "number", min: 0 },
-  { name: "stock_qty", label: "Stok", required: true, type: "number", min: 0 },
+  { name: "stock_qty", label: "Kuantitas", required: true, type: "number", min: 0 },
 ];
 
 const formatCurrency = (value) => `Rp ${Number(value).toLocaleString("id-ID")}`;
@@ -134,9 +135,18 @@ export default function ProductsPage() {
 
   const generateLotPreview = () => setForm((f) => ({ ...f, lot_batch: "" }));
 
-  const selectedSeries = series.find((s) => String(s.id) === String(form.product_series_id));
-  const previewUnitCost = form.seriesMode === "new" ? Number(form.new_series_unit_cost || 0) : Number(selectedSeries?.unit_cost ?? 0);
-  const previewQty = Number(form.quantity || 0);
+  const selectExistingSeries = (seriesId) => {
+    const picked = series.find((s) => String(s.id) === String(seriesId));
+    setForm((f) => ({
+      ...f,
+      seriesMode: "existing",
+      product_series_id: seriesId,
+      unit_cost: picked?.unit_cost != null ? picked.unit_cost : f.unit_cost,
+    }));
+  };
+
+  const previewUnitCost = Number(form.unit_cost || 0);
+  const previewQty = Number((formMode === "create" ? form.quantity : form.stock_qty) || 0);
   const previewGrandTotal = previewUnitCost * previewQty;
   const previewCogs = previewQty > 0 ? previewGrandTotal / previewQty : 0;
 
@@ -150,9 +160,8 @@ export default function ProductsPage() {
       if (form.seriesMode === "existing" && !form.product_series_id) {
         errors.product_series_id = "Pilih Jenis Gas.";
       }
-      if (form.seriesMode === "new") {
-        if (!form.new_series_name.trim()) errors.new_series_name = "Nama Jenis Gas wajib diisi.";
-        if (!form.new_series_unit_cost || Number(form.new_series_unit_cost) < 0) errors.new_series_unit_cost = "Unit Cost wajib diisi.";
+      if (form.seriesMode === "new" && !form.new_series_name.trim()) {
+        errors.new_series_name = "Nama Jenis Gas wajib diisi.";
       }
     }
     setFieldErrors(errors);
@@ -165,7 +174,7 @@ export default function ProductsPage() {
         if (form.seriesMode === "new") {
           const { data } = await apiClient.post("/product-series", {
             name: form.new_series_name,
-            unit_cost: form.new_series_unit_cost,
+            unit_cost: form.unit_cost,
           });
           seriesId = data.data.id;
         }
@@ -175,6 +184,7 @@ export default function ProductsPage() {
           lot_batch: form.lot_batch || undefined,
           unique_id: form.unique_id || undefined,
           item_detail: form.item_detail || undefined,
+          unit_cost: form.unit_cost,
           quantity: form.quantity,
           input_date: form.input_date || undefined,
         });
@@ -217,9 +227,10 @@ export default function ProductsPage() {
     },
     { key: "lot_batch", header: "LOT/Batch", render: (row) => <CodeChip>{row.lot_batch}</CodeChip> },
     { key: "input_date", header: "Tgl Input", render: (row) => formatDate(row.input_date) },
+    { key: "unit_cost", header: "Unit Cost", render: (row) => formatCurrency(row.unit_cost) },
     { key: "grand_total_cost", header: "Grand Total Cost", render: (row) => <span className="font-semibold">{formatCurrency(row.grand_total_cost)}</span> },
     { key: "cogs", header: "COGS", render: (row) => formatCurrency(row.cogs) },
-    { key: "stock_qty", header: "Stok" },
+    { key: "stock_qty", header: "Kuantitas" },
   ];
 
   if (can("products.update") || can("products.delete")) {
@@ -319,18 +330,14 @@ export default function ProductsPage() {
               </span>
               <select
                 value={form.seriesMode === "new" ? "__new__" : form.product_series_id}
-                onChange={(e) =>
-                  e.target.value === "__new__"
-                    ? setForm({ ...form, seriesMode: "new", product_series_id: "" })
-                    : setForm({ ...form, seriesMode: "existing", product_series_id: e.target.value })
-                }
+                onChange={(e) => (e.target.value === "__new__" ? setForm({ ...form, seriesMode: "new", product_series_id: "" }) : selectExistingSeries(e.target.value))}
                 className="h-10 w-full rounded-lg border border-border bg-surface px-2.5 text-[15px] text-ink focus:border-primary focus:outline-none"
               >
                 <option value="">Pilih Jenis Gas</option>
                 {series.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
-                    {s.unit_cost != null ? ` — ${formatCurrency(s.unit_cost)}` : " — belum ada harga"}
+                    {s.unit_cost != null ? ` — ${formatCurrency(s.unit_cost)}` : ""}
                   </option>
                 ))}
                 <option value="__new__">+ Jenis Gas Baru</option>
@@ -339,25 +346,14 @@ export default function ProductsPage() {
             </div>
 
             {form.seriesMode === "new" && (
-              <div className="grid grid-cols-1 gap-4 rounded-lg border border-border p-3 sm:grid-cols-2">
-                <Input
-                  label="Nama Jenis Gas Baru"
-                  placeholder="mis. CH4 — 2.5%"
-                  value={form.new_series_name}
-                  onChange={(e) => setForm({ ...form, new_series_name: e.target.value })}
-                  error={fieldErrors.new_series_name}
-                  required
-                />
-                <Input
-                  label="Unit Cost"
-                  type="number"
-                  min="0"
-                  value={form.new_series_unit_cost}
-                  onChange={(e) => setForm({ ...form, new_series_unit_cost: e.target.value })}
-                  error={fieldErrors.new_series_unit_cost}
-                  required
-                />
-              </div>
+              <Input
+                label="Nama Jenis Gas Baru"
+                placeholder="mis. CH4 — 2.5%"
+                value={form.new_series_name}
+                onChange={(e) => setForm({ ...form, new_series_name: e.target.value })}
+                error={fieldErrors.new_series_name}
+                required
+              />
             )}
 
             <div className="flex items-end gap-2">
@@ -393,6 +389,16 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
+                label="Unit Cost"
+                name="unit_cost"
+                type="number"
+                min="0"
+                value={form.unit_cost}
+                onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
+                error={fieldErrors.unit_cost}
+                required
+              />
+              <Input
                 label="Kuantitas"
                 name="quantity"
                 type="number"
@@ -402,15 +408,16 @@ export default function ProductsPage() {
                 error={fieldErrors.quantity}
                 required
               />
-              <Input
-                label="Tanggal Input"
-                name="input_date"
-                type="date"
-                value={form.input_date}
-                onChange={(e) => setForm({ ...form, input_date: e.target.value })}
-                hint="Kosongkan untuk hari ini"
-              />
             </div>
+
+            <Input
+              label="Tanggal Input"
+              name="input_date"
+              type="date"
+              value={form.input_date}
+              onChange={(e) => setForm({ ...form, input_date: e.target.value })}
+              hint="Kosongkan untuk hari ini"
+            />
 
             <div className="rounded-lg bg-surface-2 p-3">
               <div className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Kalkulasi Otomatis (Ilustratif)</div>
@@ -480,22 +487,27 @@ export default function ProductsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex items-end gap-2">
               <Input
                 label="LOT / Batch Number"
                 name="lot_batch"
                 placeholder="LOT-..."
+                className="flex-1"
                 value={form.lot_batch}
                 onChange={(e) => setForm({ ...form, lot_batch: e.target.value })}
               />
-              <Input
-                label="ID Unik Per Produk"
-                name="unique_id"
-                placeholder="BRG-..."
-                value={form.unique_id}
-                onChange={(e) => setForm({ ...form, unique_id: e.target.value })}
-              />
+              <Button type="button" variant="secondary" onClick={generateLotPreview}>
+                Auto-generate
+              </Button>
             </div>
+
+            <Input
+              label="ID Unik Per Produk"
+              name="unique_id"
+              placeholder="BRG-..."
+              value={form.unique_id}
+              onChange={(e) => setForm({ ...form, unique_id: e.target.value })}
+            />
 
             <Textarea
               label="Item Detail"
@@ -517,7 +529,7 @@ export default function ProductsPage() {
                 required
               />
               <Input
-                label="Stok"
+                label="Kuantitas"
                 name="stock_qty"
                 type="number"
                 min="0"
@@ -526,6 +538,19 @@ export default function ProductsPage() {
                 error={fieldErrors.stock_qty}
                 required
               />
+            </div>
+
+            <div className="rounded-lg bg-surface-2 p-3">
+              <div className="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">Kalkulasi Otomatis (Ilustratif)</div>
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="text-ink-muted">Grand Total Cost</span>
+                <span className="font-semibold text-ink">{formatCurrency(previewGrandTotal)}</span>
+              </div>
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <span className="text-ink-muted">COGS</span>
+                <span className="font-semibold text-ink">{formatCurrency(previewCogs)}</span>
+              </div>
+              <div className="text-xs text-ink-faint">Metode kalkulasi belum final dikonfirmasi klien.</div>
             </div>
 
             {formError && <Alert>{formError}</Alert>}

@@ -26,6 +26,7 @@ class StoreProductRequest extends FormRequest
             'lot_batch' => ['nullable', 'string', 'max:100'],
             'unique_id' => ['nullable', 'string', 'max:100'],
             'item_detail' => ['nullable', 'string', 'max:1000'],
+            'unit_cost' => ['required', 'numeric', 'min:0'],
             'quantity' => ['required', 'integer', 'min:1'],
             'additional_cost' => ['nullable', 'numeric', 'min:0'],
             'input_date' => ['nullable', 'date'],
