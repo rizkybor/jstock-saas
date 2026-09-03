@@ -229,6 +229,23 @@ class TransactionFlowTest extends TestCase
         $this->assertSame(1, Recipient::where('tenant_id', $tenant->id)->where('client_id', $client->id)->count());
     }
 
+    public function test_recipient_position_falls_back_to_the_clients_own_pic_position(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+        $product = $this->makeProduct($tenant, 20);
+        $client = Client::create([
+            'tenant_id' => $tenant->id, 'company_name' => 'PT Contoh', 'pic_name' => 'Andi Wijaya', 'pic_position' => 'Manager Gudang',
+        ]);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'client_id' => $client->id,
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
+        ])->assertCreated()->assertJsonPath('data.recipient.position', 'Manager Gudang');
+    }
+
     public function test_users_endpoint_lists_only_this_tenants_active_accounts_for_the_pengirim_dropdown(): void
     {
         $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);

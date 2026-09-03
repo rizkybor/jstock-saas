@@ -79,7 +79,7 @@ class TransactionController extends Controller
                     ['client_id' => $client->id],
                     [
                         'name' => $client->pic_name,
-                        'position' => $data['recipient_position'] ?? null,
+                        'position' => $data['recipient_position'] ?? $client->pic_position,
                         'company' => $data['recipient_company'] ?? $client->company_name,
                     ],
                 )->id;
