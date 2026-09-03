@@ -124,7 +124,7 @@ export default function ProductsPage() {
               <span aria-hidden="true" className="text-sm font-semibold text-transparent select-none">
                 Aksi
               </span>
-              <Button type="submit" disabled={submitting} className="h-10 w-full">
+              <Button type="submit" loading={submitting} className="h-10 w-full">
                 {submitting ? "Menyimpan..." : "Tambah Barang"}
               </Button>
             </div>
@@ -138,24 +138,21 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {loading ? (
-        <p className="text-sm text-ink-muted">Memuat...</p>
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            rows={products}
-            rowKey={(row) => row.id}
-            emptyMessage="Belum ada data barang."
-            startIndex={(meta.current_page - 1) * 10}
-          />
-          <Pagination
-            currentPage={meta.current_page}
-            lastPage={meta.last_page}
-            total={meta.total}
-            onPageChange={loadProducts}
-          />
-        </>
+      <DataTable
+        columns={columns}
+        rows={products}
+        rowKey={(row) => row.id}
+        emptyMessage="Belum ada data barang."
+        startIndex={(meta.current_page - 1) * 10}
+        loading={loading}
+      />
+      {!loading && (
+        <Pagination
+          currentPage={meta.current_page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          onPageChange={loadProducts}
+        />
       )}
     </div>
   );

@@ -22,6 +22,7 @@ export default function ClientsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [deactivatingId, setDeactivatingId] = useState(null);
 
   const loadClients = async (page = 1) => {
     setLoading(true);
@@ -64,8 +65,13 @@ export default function ClientsPage() {
 
   const handleDeactivate = async (id) => {
     if (!confirm("Nonaktifkan klien ini?")) return;
-    await apiClient.delete(`/clients/${id}`);
-    await loadClients(meta.current_page);
+    setDeactivatingId(id);
+    try {
+      await apiClient.delete(`/clients/${id}`);
+      await loadClients(meta.current_page);
+    } finally {
+      setDeactivatingId(null);
+    }
   };
 
   const columns = [
@@ -85,7 +91,12 @@ export default function ClientsPage() {
       key: "actions",
       header: "Aksi",
       render: (row) => (
-        <Button variant="danger" size="sm" onClick={() => handleDeactivate(row.id)}>
+        <Button
+          variant="danger"
+          size="sm"
+          loading={deactivatingId === row.id}
+          onClick={() => handleDeactivate(row.id)}
+        >
           Nonaktifkan
         </Button>
       ),
@@ -130,7 +141,7 @@ export default function ClientsPage() {
               error={fieldErrors.email}
             />
             <div className="sm:col-span-2 lg:col-span-4">
-              <Button type="submit" disabled={submitting}>
+              <Button type="submit" loading={submitting}>
                 {submitting ? "Menyimpan..." : "Tambah Klien"}
               </Button>
             </div>
@@ -144,24 +155,21 @@ export default function ClientsPage() {
         </div>
       )}
 
-      {loading ? (
-        <p className="text-sm text-ink-muted">Memuat...</p>
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            rows={clients}
-            rowKey={(row) => row.id}
-            emptyMessage="Belum ada data klien."
-            startIndex={(meta.current_page - 1) * 10}
-          />
-          <Pagination
-            currentPage={meta.current_page}
-            lastPage={meta.last_page}
-            total={meta.total}
-            onPageChange={loadClients}
-          />
-        </>
+      <DataTable
+        columns={columns}
+        rows={clients}
+        rowKey={(row) => row.id}
+        emptyMessage="Belum ada data klien."
+        startIndex={(meta.current_page - 1) * 10}
+        loading={loading}
+      />
+      {!loading && (
+        <Pagination
+          currentPage={meta.current_page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          onPageChange={loadClients}
+        />
       )}
     </div>
   );

@@ -71,7 +71,7 @@ export default function LoginPage() {
             required
           />
           <Alert>{error}</Alert>
-          <Button type="submit" disabled={loading} className="w-full rounded-full py-2.5">
+          <Button type="submit" loading={loading} className="w-full rounded-full py-2.5">
             {loading ? "Memproses..." : "Masuk"}
           </Button>
         </form>

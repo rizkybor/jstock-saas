@@ -26,6 +26,8 @@ export default function TransactionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [actionId, setActionId] = useState(null);
+  const [actionType, setActionType] = useState(null);
 
   const loadTransactions = async (page = 1) => {
     setLoading(true);
@@ -82,11 +84,16 @@ export default function TransactionsPage() {
 
   const handleApprove = async (id) => {
     setError(null);
+    setActionId(id);
+    setActionType("approve");
     try {
       await apiClient.patch(`/transactions/${id}/approve`);
       await Promise.all([loadTransactions(meta.current_page), loadProducts()]);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal approve transaksi.");
+    } finally {
+      setActionId(null);
+      setActionType(null);
     }
   };
 
@@ -94,11 +101,16 @@ export default function TransactionsPage() {
     const note = prompt("Alasan penolakan:");
     if (!note) return;
     setError(null);
+    setActionId(id);
+    setActionType("reject");
     try {
       await apiClient.patch(`/transactions/${id}/reject`, { rejection_note: note });
       await loadTransactions(meta.current_page);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal reject transaksi.");
+    } finally {
+      setActionId(null);
+      setActionType(null);
     }
   };
 
@@ -117,10 +129,22 @@ export default function TransactionsPage() {
       render: (row) =>
         row.status === "pending" && (
           <div className="flex gap-2">
-            <Button variant="success" size="sm" onClick={() => handleApprove(row.id)}>
+            <Button
+              variant="success"
+              size="sm"
+              loading={actionId === row.id && actionType === "approve"}
+              disabled={actionId === row.id && actionType === "reject"}
+              onClick={() => handleApprove(row.id)}
+            >
               Approve
             </Button>
-            <Button variant="outline-danger" size="sm" onClick={() => handleReject(row.id)}>
+            <Button
+              variant="outline-danger"
+              size="sm"
+              loading={actionId === row.id && actionType === "reject"}
+              disabled={actionId === row.id && actionType === "approve"}
+              onClick={() => handleReject(row.id)}
+            >
               Reject
             </Button>
           </div>
@@ -187,7 +211,7 @@ export default function TransactionsPage() {
               <span aria-hidden="true" className="text-sm font-semibold text-transparent select-none">
                 Aksi
               </span>
-              <Button type="submit" disabled={submitting} className="h-10 w-full">
+              <Button type="submit" loading={submitting} className="h-10 w-full">
                 {submitting ? "Menyimpan..." : "Submit untuk Approval"}
               </Button>
             </div>
@@ -211,24 +235,21 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {loading ? (
-        <p className="text-sm text-ink-muted">Memuat...</p>
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            rows={transactions}
-            rowKey={(row) => row.id}
-            emptyMessage="Belum ada transaksi."
-            startIndex={(meta.current_page - 1) * 10}
-          />
-          <Pagination
-            currentPage={meta.current_page}
-            lastPage={meta.last_page}
-            total={meta.total}
-            onPageChange={loadTransactions}
-          />
-        </>
+      <DataTable
+        columns={columns}
+        rows={transactions}
+        rowKey={(row) => row.id}
+        emptyMessage="Belum ada transaksi."
+        startIndex={(meta.current_page - 1) * 10}
+        loading={loading}
+      />
+      {!loading && (
+        <Pagination
+          currentPage={meta.current_page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          onPageChange={loadTransactions}
+        />
       )}
     </div>
   );

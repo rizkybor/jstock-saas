@@ -10,6 +10,7 @@ import {
   Modal,
   PageHeader,
   Pagination,
+  Skeleton,
   StatTile,
 } from "../../components/ui";
 import { hasErrors, validate } from "../../utils/validate";
@@ -57,6 +58,8 @@ export default function AdminTenantsPage() {
   const [formError, setFormError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [statusBusyToken, setStatusBusyToken] = useState(null);
+  const [moduleBusyId, setModuleBusyId] = useState(null);
 
   const loadTenants = async (page = 1) => {
     setLoading(true);
@@ -105,11 +108,14 @@ export default function AdminTenantsPage() {
     if (!confirm(confirmMessage)) return;
 
     setError(null);
+    setStatusBusyToken(tenant.token);
     try {
       await apiClient.patch(`/admin/tenants/${tenant.token}/${action}`);
       await Promise.all([loadTenants(meta.current_page), loadStats()]);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal memperbarui status tenant.");
+    } finally {
+      setStatusBusyToken(null);
     }
   };
 
@@ -134,6 +140,7 @@ export default function AdminTenantsPage() {
 
   const toggleModule = async (module) => {
     setModuleError(null);
+    setModuleBusyId(module.id);
     try {
       if (module.enabled) {
         await apiClient.delete(`/admin/tenants/${moduleTenant.token}/modules/${module.id}`);
@@ -144,6 +151,8 @@ export default function AdminTenantsPage() {
       await loadTenants(meta.current_page);
     } catch (err) {
       setModuleError(err.response?.data?.message ?? "Gagal memperbarui modul.");
+    } finally {
+      setModuleBusyId(null);
     }
   };
 
@@ -246,6 +255,7 @@ export default function AdminTenantsPage() {
           <Button
             variant={row.status === "suspended" ? "primary" : "danger"}
             size="sm"
+            loading={statusBusyToken === row.token}
             onClick={() => toggleStatus(row)}
           >
             {row.status === "suspended" ? "Aktifkan" : "Suspend"}
@@ -280,24 +290,21 @@ export default function AdminTenantsPage() {
         </div>
       )}
 
-      {loading ? (
-        <p className="text-sm text-ink-muted">Memuat...</p>
-      ) : (
-        <>
-          <DataTable
-            columns={columns}
-            rows={tenants}
-            rowKey={(row) => row.token}
-            emptyMessage="Belum ada tenant terdaftar."
-            startIndex={(meta.current_page - 1) * 10}
-          />
-          <Pagination
-            currentPage={meta.current_page}
-            lastPage={meta.last_page}
-            total={meta.total}
-            onPageChange={loadTenants}
-          />
-        </>
+      <DataTable
+        columns={columns}
+        rows={tenants}
+        rowKey={(row) => row.token}
+        emptyMessage="Belum ada tenant terdaftar."
+        startIndex={(meta.current_page - 1) * 10}
+        loading={loading}
+      />
+      {!loading && (
+        <Pagination
+          currentPage={meta.current_page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          onPageChange={loadTenants}
+        />
       )}
 
       {moduleTenant && (
@@ -313,17 +320,22 @@ export default function AdminTenantsPage() {
           )}
 
           {moduleLoading ? (
-            <p className="text-sm text-ink-muted">Memuat...</p>
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {moduleList.map((module) => (
                 <label
                   key={module.id}
-                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-surface-2"
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-surface-2 has-disabled:cursor-not-allowed has-disabled:opacity-50"
                 >
                   <input
                     type="checkbox"
                     checked={module.enabled}
+                    disabled={moduleBusyId === module.id}
                     onChange={() => toggleModule(module)}
                     className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
                   />
@@ -459,7 +471,7 @@ export default function AdminTenantsPage() {
               <Button type="button" variant="secondary" onClick={closeForm}>
                 Batal
               </Button>
-              <Button type="submit" disabled={submitting}>
+              <Button type="submit" loading={submitting}>
                 {submitting ? "Menyimpan..." : formMode === "create" ? "Buat Tenant" : "Simpan Perubahan"}
               </Button>
             </div>

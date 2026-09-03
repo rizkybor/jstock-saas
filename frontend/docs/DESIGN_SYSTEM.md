@@ -53,17 +53,19 @@ Ukuran yang sering dipakai persis seperti referensi (arbitrary value, bukan skal
 Semua ada di `src/components/ui/`, diimpor lewat barrel file:
 
 ```jsx
-import { Alert, Badge, Button, Card, CodeChip, DataTable, EmptyState, Input, PageHeader, Pagination, Select, StatTile } from "../../components/ui";
+import { Alert, Badge, Button, Card, CodeChip, DataTable, EmptyState, Input, Modal, PageHeader, Pagination, Select, Skeleton, StatTile } from "../../components/ui";
 ```
 
 | Komponen | Kegunaan | Props penting |
 |---|---|---|
-| `Button` | Semua tombol aksi | `variant`: `primary` \| `secondary` \| `ghost` \| `success` \| `danger` \| `outline-danger`; `size`: `sm` \| `md` |
+| `Button` | Semua tombol aksi | `variant`: `primary` \| `secondary` \| `ghost` \| `success` \| `danger` \| `outline-danger`; `size`: `sm` \| `md`; `loading` (spinner + auto-disable) |
 | `Input` / `Select` | Field form dengan label + error/hint bawaan | `label`, `error`, `hint`, plus semua prop native `<input>`/`<select>` |
 | `Badge` | Status pill (transaksi, aktif/nonaktif) | `status` — lihat tabel semantik di atas |
 | `CodeChip` | Pill monospace untuk kode (LOT/Batch, No. Transaksi, slug) | `children` |
 | `Card` | Kontainer section (form, ringkasan) | `title`, `action` (slot kanan, mis. tombol) |
-| `DataTable` | Tabel data generik, scroll horizontal otomatis, kolom "No." otomatis | `columns` (`{key, header, render?(row, index)}`), `rows`, `rowKey(row)`, `emptyMessage`, `showIndex` (default `true`), `startIndex` |
+| `DataTable` | Tabel data generik, scroll horizontal otomatis, kolom "No." otomatis | `columns` (`{key, header, render?(row, index)}`), `rows`, `rowKey(row)`, `emptyMessage`, `showIndex` (default `true`), `startIndex`, `loading` (render skeleton rows) |
+| `Modal` | Dialog overlay terpusat (form/konfirmasi) | `title`, `description`, `onClose`, `width` |
+| `Skeleton` | Bar shimmer generik, building block loading state | `className` (atur lebar/tinggi) |
 | `PageHeader` | Judul halaman + deskripsi + aksi utama | `title`, `description`, `action` |
 | `EmptyState` | Placeholder saat data/fitur belum ada | `title`, `description`, `action` |
 | `Alert` | Pesan error/sukses/info sebaris | `tone`: `danger` \| `success` \| `info`; render `null` kalau `children` kosong — aman dipakai langsung dengan state error (`<Alert>{error}</Alert>`) |
@@ -180,7 +182,62 @@ Tiap `<form>` yang pakai pola ini **wajib** diberi `noValidate` supaya validasi 
 </form>
 ```
 
-## 7. Menambah Komponen Baru
+## 7. Loader State & Skeleton
+
+Setiap aktivitas CRUD punya indikator loading — tidak ada lagi teks polos "Memuat..." atau tombol yang diam saat diklik.
+
+**List load (Read)** — lempar `loading` ke `DataTable`, jangan sembunyikan tabelnya di balik ternary:
+
+```jsx
+<DataTable columns={columns} rows={clients} rowKey={(r) => r.id} loading={loading} />
+{!loading && <Pagination ... />}
+```
+
+`DataTable` merender baris skeleton (jumlah kolom & `skeletonRows` — default 5 — bisa diatur) selagi `loading`, dengan header tabel tetap terlihat supaya bentuk halaman tidak "meloncat" begitu data datang.
+
+**Create/Update/Submit** — lempar `loading` (bukan cuma `disabled`) ke `Button`; komponennya otomatis menampilkan spinner dan menonaktifkan diri:
+
+```jsx
+<Button type="submit" loading={submitting}>
+  {submitting ? "Menyimpan..." : "Tambah Klien"}
+</Button>
+```
+
+**Aksi per-baris (Approve/Reject/Suspend/Delete/toggle)** — simpan id/kunci baris yang sedang diproses di state, lalu cocokkan ke tombol barisnya saja (supaya baris lain tetap bisa diklik):
+
+```jsx
+const [actionId, setActionId] = useState(null);
+
+const handleApprove = async (id) => {
+  setActionId(id);
+  try { await apiClient.patch(`/transactions/${id}/approve`); } finally { setActionId(null); }
+};
+
+<Button loading={actionId === row.id} onClick={() => handleApprove(row.id)}>Approve</Button>
+```
+
+Untuk daftar pendek di dalam `Modal` (bukan `DataTable`, mis. checklist modul), pakai `Skeleton` langsung sebagai placeholder alih-alih teks "Memuat...":
+
+```jsx
+{loading ? (
+  <div className="flex flex-col gap-2">
+    {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+  </div>
+) : (
+  ...
+)}
+```
+
+## 8. Routing & Tenant Token
+
+Halaman bisnis tenant hidup di `/:tenantId/dashboard`, `/:tenantId/clients`, dst. — segmen `:tenantId` itu **bukan** ID asli, melainkan token terenkripsi (`user.tenant_token` dari `/auth/me` atau login). Backend mengenkripsinya (AES-256-CBC + HMAC, lihat `App\Support\TenantToken` di backend) supaya ID tenant tidak pernah bocor ke URL/network tab siapa pun. Konsekuensi penting buat kode frontend:
+
+- **Jangan pernah** simpan atau bandingkan `tenant_id` mentah di frontend — field itu memang tidak lagi dikirim API. Selalu pakai `user.tenant_token`.
+- Frontend **tidak bisa dan tidak perlu** mendekripsi token ini — kuncinya cuma ada di server. Perbandingan (mis. di `RequireOwnTenant`) selalu berupa perbandingan string token, bukan decode.
+- Saat menambah halaman tenant baru, daftarkan sebagai `/:tenantId/nama-halaman` di dalam `<Route element={<RequireOwnTenant />}>` (lihat `App.jsx`), dan bangun link/navigasinya dari `user.tenant_token` (lihat `tenantNavItems()` di `AppLayout.jsx`), bukan menyusun URL manual dari state lain.
+- Untuk endpoint admin per-tenant (`/admin/tenants/{tenant}/...`), backend menerima token yang sama di path — kirim `tenant.token` dari respons `GET /admin/tenants`, jangan pernah `tenant.id` (field itu memang tidak diekspos).
+
+## 9. Menambah Komponen Baru
 
 1. Taruh di `src/components/ui/NamaKomponen.jsx`, styling **hanya** lewat utility Tailwind + token di atas (jangan hardcode hex baru — tambahkan token ke `src/index.css` dulu kalau memang perlu warna baru, dan cek dulu apakah warnanya ada di referensi `docs/Inventory Dashboard (standalone).html`).
 2. Export dari `src/components/ui/index.js`.
