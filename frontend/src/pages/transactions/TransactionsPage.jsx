@@ -3,8 +3,16 @@ import apiClient from "../../api/client";
 import { Alert, Badge, Button, Card, CodeChip, DataTable, Input, PageHeader, Pagination, Select } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
+import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_FORM = { product_id: "", qty: "", sender_name: "", recipient_name: "", recipient_company: "" };
+
+const VALIDATION_RULES = [
+  { name: "product_id", label: "Barang / LOT", required: true },
+  { name: "qty", label: "Qty", required: true, type: "number", min: 1 },
+  { name: "sender_name", label: "Nama Pengirim", required: true },
+  { name: "recipient_name", label: "Nama Penerima", required: true },
+];
 
 const formatCurrency = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
@@ -16,6 +24,7 @@ export default function TransactionsPage() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
 
   const loadTransactions = async (page = 1) => {
@@ -47,8 +56,13 @@ export default function TransactionsPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+
+    const errors = validate(form, VALIDATION_RULES);
+    setFieldErrors(errors);
+    if (hasErrors(errors)) return;
+
+    setSubmitting(true);
     try {
       await apiClient.post("/transactions", {
         sender_name: form.sender_name,
@@ -57,6 +71,7 @@ export default function TransactionsPage() {
         items: [{ product_id: Number(form.product_id), qty: Number(form.qty) }],
       });
       setForm(EMPTY_FORM);
+      setFieldErrors({});
       await Promise.all([loadTransactions(1), loadProducts()]);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal membuat transaksi.");
@@ -119,12 +134,13 @@ export default function TransactionsPage() {
 
       <Can permission="transactions.create">
         <Card title="Transaksi Baru" className="mb-6">
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Select
               label="Barang / LOT"
               name="product_id"
               value={form.product_id}
               onChange={(e) => setForm({ ...form, product_id: e.target.value })}
+              error={fieldErrors.product_id}
               required
             >
               <option value="">Pilih barang</option>
@@ -141,6 +157,7 @@ export default function TransactionsPage() {
               min="1"
               value={form.qty}
               onChange={(e) => setForm({ ...form, qty: e.target.value })}
+              error={fieldErrors.qty}
               required
             />
             <Input
@@ -148,6 +165,7 @@ export default function TransactionsPage() {
               name="sender_name"
               value={form.sender_name}
               onChange={(e) => setForm({ ...form, sender_name: e.target.value })}
+              error={fieldErrors.sender_name}
               required
             />
             <Input
@@ -155,6 +173,7 @@ export default function TransactionsPage() {
               name="recipient_name"
               value={form.recipient_name}
               onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
+              error={fieldErrors.recipient_name}
               required
             />
             <Input

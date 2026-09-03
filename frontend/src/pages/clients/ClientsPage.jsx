@@ -3,8 +3,15 @@ import apiClient from "../../api/client";
 import { Alert, Badge, Button, Card, DataTable, Input, PageHeader, Pagination } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
+import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_FORM = { company_name: "", pic_name: "", phone: "", email: "" };
+
+const VALIDATION_RULES = [
+  { name: "company_name", label: "Nama Perusahaan", required: true },
+  { name: "pic_name", label: "Nama PIC", required: true },
+  { name: "email", label: "Email", type: "email" },
+];
 
 export default function ClientsPage() {
   const { can } = useAuth();
@@ -13,6 +20,7 @@ export default function ClientsPage() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
 
   const loadClients = async (page = 1) => {
@@ -35,11 +43,17 @@ export default function ClientsPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+
+    const errors = validate(form, VALIDATION_RULES);
+    setFieldErrors(errors);
+    if (hasErrors(errors)) return;
+
+    setSubmitting(true);
     try {
       await apiClient.post("/clients", form);
       setForm(EMPTY_FORM);
+      setFieldErrors({});
       await loadClients(1);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal menambahkan klien.");
@@ -84,12 +98,13 @@ export default function ClientsPage() {
 
       <Can permission="clients.create">
         <Card title="Tambah Klien Baru" className="mb-6">
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Input
               label="Nama Perusahaan"
               name="company_name"
               value={form.company_name}
               onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+              error={fieldErrors.company_name}
               required
             />
             <Input
@@ -97,6 +112,7 @@ export default function ClientsPage() {
               name="pic_name"
               value={form.pic_name}
               onChange={(e) => setForm({ ...form, pic_name: e.target.value })}
+              error={fieldErrors.pic_name}
               required
             />
             <Input
@@ -111,6 +127,7 @@ export default function ClientsPage() {
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              error={fieldErrors.email}
             />
             <div className="sm:col-span-2 lg:col-span-4">
               <Button type="submit" disabled={submitting}>

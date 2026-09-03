@@ -4,11 +4,18 @@ import apiClient from "../../api/client";
 import { Alert, Button, Input } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import { homeRouteFor } from "../../routes/homeRoute";
+import { hasErrors, validate } from "../../utils/validate";
+
+const VALIDATION_RULES = [
+  { name: "email", label: "Email", required: true, type: "email" },
+  { name: "password", label: "Password", required: true },
+];
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -16,6 +23,11 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
+
+    const errors = validate({ email, password }, VALIDATION_RULES);
+    setFieldErrors(errors);
+    if (hasErrors(errors)) return;
+
     setLoading(true);
     try {
       const { data } = await apiClient.post("/auth/login", { email, password });
@@ -37,7 +49,7 @@ export default function LoginPage() {
         </div>
         <p className="mb-6 text-sm text-ink-muted">Sistem Inventory — masuk untuk melanjutkan</p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <Input
             label="Email"
             type="email"
@@ -45,6 +57,7 @@ export default function LoginPage() {
             placeholder="nama@perusahaan.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            error={fieldErrors.email}
             required
           />
           <Input
@@ -54,6 +67,7 @@ export default function LoginPage() {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            error={fieldErrors.password}
             required
           />
           <Alert>{error}</Alert>

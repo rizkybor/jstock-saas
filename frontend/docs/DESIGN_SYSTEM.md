@@ -132,7 +132,55 @@ Breakpoint yang dipakai konsisten di semua halaman (Tailwind default): `sm` 640p
 
 Tabel selalu dibungkus `overflow-x-auto` (sudah built-in di `DataTable`) supaya di layar sempit yang scroll adalah tabelnya, bukan seluruh halaman.
 
-## 6. Menambah Komponen Baru
+## 6. Field Wajib & Validasi Submit
+
+Setiap field yang wajib diisi diberi `required` pada `Input`/`Select` — komponennya otomatis menambahkan tanda bintang merah setelah label lewat `RequiredMark` (`text-danger-solid`, `#e5484d`), jadi jangan tulis `*` manual di string label.
+
+```jsx
+<Input label="Nama Perusahaan" name="company_name" required ... />
+// -> label render: Nama Perusahaan *   (bintang merah)
+```
+
+Validasi submit dipusatkan di `src/utils/validate.js`, dipakai di semua form (`LoginPage`, `ClientsPage`, `ProductsPage`, `TransactionsPage`):
+
+```jsx
+import { hasErrors, validate } from "../../utils/validate";
+
+const VALIDATION_RULES = [
+  { name: "company_name", label: "Nama Perusahaan", required: true },
+  { name: "email", label: "Email", type: "email" }, // format dicek hanya kalau diisi (tidak required)
+];
+
+const [fieldErrors, setFieldErrors] = useState({});
+
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  setError(null);
+
+  const errors = validate(form, VALIDATION_RULES);
+  setFieldErrors(errors);
+  if (hasErrors(errors)) return; // stop — jangan panggil API kalau ada error
+
+  setSubmitting(true);
+  try {
+    await apiClient.post(...);
+    setFieldErrors({}); // reset setelah sukses
+    ...
+  } ...
+};
+```
+
+`validate(values, rules)` mendukung `required`, `type: "email"` (format), `type: "number"` (harus angka), dan `min` (nilai minimum, dicek juga untuk field number yang required maupun opsional). Pesan errornya otomatis dibentuk dari `label` (mis. "Qty wajib diisi.", "Email harus berupa email yang valid.") — tidak perlu tulis pesan manual per field kecuali butuh kasus khusus.
+
+Tiap `<form>` yang pakai pola ini **wajib** diberi `noValidate` supaya validasi bawaan browser (tooltip native, stylingnya tidak konsisten dengan desain) tidak mengambil alih sebelum handler submit kita jalan — atribut HTML `required` tetap dipertahankan di elemen `<input>`/`<select>` untuk aksesibilitas (dibaca screen reader), hanya UI validasinya yang kita ambil alih sepenuhnya lewat `error` prop:
+
+```jsx
+<form onSubmit={handleSubmit} noValidate className="grid ...">
+  <Input ... error={fieldErrors.company_name} required />
+</form>
+```
+
+## 7. Menambah Komponen Baru
 
 1. Taruh di `src/components/ui/NamaKomponen.jsx`, styling **hanya** lewat utility Tailwind + token di atas (jangan hardcode hex baru — tambahkan token ke `src/index.css` dulu kalau memang perlu warna baru, dan cek dulu apakah warnanya ada di referensi `docs/Inventory Dashboard (standalone).html`).
 2. Export dari `src/components/ui/index.js`.

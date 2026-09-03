@@ -2,8 +2,16 @@ import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
 import { Alert, Button, Card, CodeChip, DataTable, Input, PageHeader, Pagination } from "../../components/ui";
 import Can from "../../routes/Can";
+import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_FORM = { name: "", unit_cost: "", quantity: "", additional_cost: "" };
+
+const VALIDATION_RULES = [
+  { name: "name", label: "Nama Barang", required: true },
+  { name: "unit_cost", label: "Unit Cost", required: true, type: "number", min: 0 },
+  { name: "quantity", label: "Qty", required: true, type: "number", min: 1 },
+  { name: "additional_cost", label: "Biaya Tambahan", type: "number", min: 0 },
+];
 
 const formatCurrency = (value) => `Rp ${value.toLocaleString("id-ID")}`;
 
@@ -13,6 +21,7 @@ export default function ProductsPage() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
 
   const loadProducts = async (page = 1) => {
@@ -35,11 +44,17 @@ export default function ProductsPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(null);
+
+    const errors = validate(form, VALIDATION_RULES);
+    setFieldErrors(errors);
+    if (hasErrors(errors)) return;
+
+    setSubmitting(true);
     try {
       await apiClient.post("/products", form);
       setForm(EMPTY_FORM);
+      setFieldErrors({});
       await loadProducts(1);
     } catch (err) {
       setError(err.response?.data?.message ?? "Gagal menambahkan barang.");
@@ -63,7 +78,7 @@ export default function ProductsPage() {
 
       <Can permission="products.create">
         <Card title="Tambah Barang Baru" className="mb-6">
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <form onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="sm:col-span-2 lg:col-span-4">
               <Input
                 label="Nama Barang"
@@ -71,6 +86,7 @@ export default function ProductsPage() {
                 placeholder="mis. 8AL 25PPM H2S/100PPM CO"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+                error={fieldErrors.name}
                 required
               />
             </div>
@@ -81,6 +97,7 @@ export default function ProductsPage() {
               min="0"
               value={form.unit_cost}
               onChange={(e) => setForm({ ...form, unit_cost: e.target.value })}
+              error={fieldErrors.unit_cost}
               required
             />
             <Input
@@ -90,6 +107,7 @@ export default function ProductsPage() {
               min="1"
               value={form.quantity}
               onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              error={fieldErrors.quantity}
               required
             />
             <Input
@@ -100,6 +118,7 @@ export default function ProductsPage() {
               hint="Opsional, mis. ongkos kirim"
               value={form.additional_cost}
               onChange={(e) => setForm({ ...form, additional_cost: e.target.value })}
+              error={fieldErrors.additional_cost}
             />
             <div className="flex flex-col gap-1.5">
               <span aria-hidden="true" className="text-sm font-semibold text-transparent select-none">
