@@ -26,4 +26,9 @@ class Client extends Model
     {
         return $this->hasMany(Transaction::class);
     }
+
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(ClientAddress::class);
+    }
 }

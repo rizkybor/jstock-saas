@@ -20,6 +20,7 @@ class ClientResource extends JsonResource
             'phone' => $this->phone,
             'email' => $this->email,
             'address' => $this->address,
+            'addresses' => ClientAddressResource::collection($this->whenLoaded('addresses')),
             'is_active' => $this->is_active,
             'created_at' => $this->created_at,
         ];

@@ -24,6 +24,18 @@ class UpdateClientRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
+
+            'addresses' => ['nullable', 'array'],
+            'addresses.*.label' => ['required', 'string', 'max:100'],
+            'addresses.*.province_id' => ['nullable', 'string', 'max:10'],
+            'addresses.*.province_name' => ['nullable', 'string', 'max:255'],
+            'addresses.*.regency_id' => ['nullable', 'string', 'max:10'],
+            'addresses.*.regency_name' => ['nullable', 'string', 'max:255'],
+            'addresses.*.district_id' => ['nullable', 'string', 'max:10'],
+            'addresses.*.district_name' => ['nullable', 'string', 'max:255'],
+            'addresses.*.village_id' => ['nullable', 'string', 'max:10'],
+            'addresses.*.village_name' => ['nullable', 'string', 'max:255'],
+            'addresses.*.detail' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

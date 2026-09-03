@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Models\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
@@ -39,11 +40,20 @@ class ClientController extends Controller
 
     public function store(StoreClientRequest $request)
     {
-        $client = Client::create([...$request->validated(), 'is_active' => true]);
+        $data = $request->validated();
+        $addresses = $data['addresses'] ?? [];
+        unset($data['addresses']);
+
+        $client = DB::transaction(function () use ($data, $addresses) {
+            $client = Client::create([...$data, 'is_active' => true]);
+            $client->addresses()->createMany($addresses);
+
+            return $client;
+        });
 
         return response()->json([
             'success' => true,
-            'data' => new ClientResource($client),
+            'data' => new ClientResource($client->load('addresses')),
             'message' => 'Klien berhasil ditambahkan.',
         ], 201);
     }
@@ -52,18 +62,29 @@ class ClientController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => new ClientResource($client),
+            'data' => new ClientResource($client->load('addresses')),
             'message' => null,
         ]);
     }
 
     public function update(UpdateClientRequest $request, Client $client)
     {
-        $client->update($request->validated());
+        $data = $request->validated();
+        $addresses = $data['addresses'] ?? null;
+        unset($data['addresses']);
+
+        DB::transaction(function () use ($client, $data, $addresses) {
+            $client->update($data);
+
+            if ($addresses !== null) {
+                $client->addresses()->delete();
+                $client->addresses()->createMany($addresses);
+            }
+        });
 
         return response()->json([
             'success' => true,
-            'data' => new ClientResource($client),
+            'data' => new ClientResource($client->fresh('addresses')),
             'message' => 'Klien berhasil diperbarui.',
         ]);
     }
