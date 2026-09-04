@@ -183,6 +183,39 @@ class WarehouseModuleTest extends TestCase
             ->assertOk();
     }
 
+    public function test_owner_can_manage_suppliers_with_a_wilayah_address(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableWarehouseModule($tenant);
+        $owner = $this->makeUser($tenant, 'owner');
+
+        $supplierId = $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/warehouse/suppliers', [
+                'name' => 'PT Supplier Jaya',
+                'address' => 'Jl. Industri No. 10',
+                'province_id' => '31',
+                'province_name' => 'DKI Jakarta',
+                'regency_id' => '3171',
+                'regency_name' => 'Kota Jakarta Selatan',
+                'district_id' => '317101',
+                'district_name' => 'Kebayoran Baru',
+                'village_id' => '3171011001',
+                'village_name' => 'Selong',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.address', 'Jl. Industri No. 10')
+            ->assertJsonPath('data.province_name', 'DKI Jakarta')
+            ->assertJsonPath('data.village_name', 'Selong')
+            ->json('data.id');
+
+        $this->actingAs($owner, 'sanctum')
+            ->putJson("/api/warehouse/suppliers/{$supplierId}", ['regency_name' => 'Kota Jakarta Pusat'])
+            ->assertOk()
+            ->assertJsonPath('data.regency_name', 'Kota Jakarta Pusat')
+            // Untouched fields from the create payload stay intact.
+            ->assertJsonPath('data.province_name', 'DKI Jakarta');
+    }
+
     public function test_stock_in_and_out_updates_the_stock_table_and_rejects_insufficient_stock(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
 import {
   Alert,
@@ -20,13 +21,28 @@ import {
 } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
+import { fetchProvinces } from "../../utils/wilayah";
 
 const STATUS_LABEL = { draft: "Draft", ordered: "Dipesan", partially_received: "Diterima Sebagian", received: "Diterima", cancelled: "Dibatalkan" };
 
 const formatCurrency = (value) => `Rp ${Number(value).toLocaleString("id-ID")}`;
 const formatDate = (value) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-");
 
-const EMPTY_SUPPLIER_FORM = { name: "", contact_name: "", phone: "", email: "", address: "" };
+const EMPTY_SUPPLIER_FORM = {
+  name: "",
+  contact_name: "",
+  phone: "",
+  email: "",
+  address: "",
+  province_id: "",
+  province_name: "",
+  regency_id: "",
+  regency_name: "",
+  district_id: "",
+  district_name: "",
+  village_id: "",
+  village_name: "",
+};
 const EMPTY_PO_FORM = { warehouse_supplier_id: "", receiving_location_id: "", ordered_at: "", notes: "", items: [] };
 
 export default function WarehousePurchaseOrdersPage() {
@@ -63,6 +79,7 @@ export default function WarehousePurchaseOrdersPage() {
   const [supplierSubmitting, setSupplierSubmitting] = useState(false);
   const [confirmDeleteSupplier, setConfirmDeleteSupplier] = useState(null);
   const [deletingSupplier, setDeletingSupplier] = useState(false);
+  const [provinces, setProvinces] = useState([]);
 
   const loadLookups = async () => {
     try {
@@ -107,6 +124,9 @@ export default function WarehousePurchaseOrdersPage() {
   useEffect(() => {
     loadLookups();
     loadOrders(1);
+    fetchProvinces()
+      .then(setProvinces)
+      .catch(() => setProvinces([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -231,6 +251,14 @@ export default function WarehousePurchaseOrdersPage() {
       phone: supplier.phone ?? "",
       email: supplier.email ?? "",
       address: supplier.address ?? "",
+      province_id: supplier.province_id ?? "",
+      province_name: supplier.province_name ?? "",
+      regency_id: supplier.regency_id ?? "",
+      regency_name: supplier.regency_name ?? "",
+      district_id: supplier.district_id ?? "",
+      district_name: supplier.district_name ?? "",
+      village_id: supplier.village_id ?? "",
+      village_name: supplier.village_name ?? "",
     });
     setSupplierFormError(null);
     setSupplierFormMode("edit");
@@ -609,11 +637,38 @@ export default function WarehousePurchaseOrdersPage() {
               value={supplierForm.email}
               onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
             />
-            <Textarea
-              label="Alamat"
-              value={supplierForm.address}
-              onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })}
-            />
+            <div>
+              <span className="mb-1.5 block text-sm font-semibold text-ink">Alamat</span>
+              <AddressFieldset
+                showLabel={false}
+                value={{
+                  province_id: supplierForm.province_id,
+                  province_name: supplierForm.province_name,
+                  regency_id: supplierForm.regency_id,
+                  regency_name: supplierForm.regency_name,
+                  district_id: supplierForm.district_id,
+                  district_name: supplierForm.district_name,
+                  village_id: supplierForm.village_id,
+                  village_name: supplierForm.village_name,
+                  detail: supplierForm.address,
+                }}
+                provinces={provinces}
+                onChange={(next) =>
+                  setSupplierForm({
+                    ...supplierForm,
+                    province_id: next.province_id,
+                    province_name: next.province_name,
+                    regency_id: next.regency_id,
+                    regency_name: next.regency_name,
+                    district_id: next.district_id,
+                    district_name: next.district_name,
+                    village_id: next.village_id,
+                    village_name: next.village_name,
+                    address: next.detail,
+                  })
+                }
+              />
+            </div>
 
             {supplierFormError && <Alert>{supplierFormError}</Alert>}
 
