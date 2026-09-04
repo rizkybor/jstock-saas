@@ -6,6 +6,8 @@ use App\Models\Tenant;
 use App\Models\TenantBarcodeSetting;
 use App\Models\User;
 use App\Models\WarehouseItem;
+use App\Models\WarehouseLocation;
+use App\Models\WarehouseStock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\HasWarehouseModule;
 use Tests\TestCase;
@@ -125,6 +127,28 @@ class WarehouseItemBarcodeTest extends TestCase
             ->assertJsonPath('data.sku', 'SKU-PUBLICTEST')
             ->assertJsonMissingPath('data.price_buy')
             ->assertJsonMissingPath('data.price_sell');
+    }
+
+    public function test_a_public_warehouse_item_scan_includes_current_stock(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableWarehouseModule($tenant);
+        $item = WarehouseItem::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Kardus Sedang',
+            'unit' => 'pcs',
+            'sku' => 'SKU-STOCKTEST',
+            'barcode_type' => 'qr',
+        ]);
+        $locationA = WarehouseLocation::create(['tenant_id' => $tenant->id, 'name' => 'Gudang A']);
+        $locationB = WarehouseLocation::create(['tenant_id' => $tenant->id, 'name' => 'Gudang B']);
+        WarehouseStock::create(['tenant_id' => $tenant->id, 'warehouse_item_id' => $item->id, 'warehouse_location_id' => $locationA->id, 'qty' => 30]);
+        WarehouseStock::create(['tenant_id' => $tenant->id, 'warehouse_item_id' => $item->id, 'warehouse_location_id' => $locationB->id, 'qty' => 12]);
+
+        // Stock is summed across every location the item is stocked in.
+        $this->getJson("/api/public/{$tenant->token}/warehouse/items/scan/{$item->sku}")
+            ->assertOk()
+            ->assertJsonPath('data.total_stock', 42);
     }
 
     public function test_public_warehouse_item_scan_is_blocked_when_the_tenant_lacks_the_module(): void

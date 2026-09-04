@@ -11,8 +11,9 @@ import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, warehouseItemScanUrl
  * outside AppLayout and outside auth entirely (see App.jsx): a scanned
  * label is opened by whoever has the physical item, not just a logged-in
  * tenant user, so it hits the public /public/:tenantId/warehouse/items/
- * scan/:sku endpoint — which also omits price figures the authenticated
- * view has, since those shouldn't be visible to anyone who scans the label.
+ * scan/:sku endpoint — which includes current stock (useful for whoever's
+ * holding the label) but omits price figures the authenticated view has,
+ * since those shouldn't be visible to anyone who scans the label.
  */
 export default function WarehouseItemScanPage() {
   const { tenantId, sku } = useParams();
@@ -58,6 +59,12 @@ export default function WarehouseItemScanPage() {
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Satuan</div>
               <div className="text-ink">{item.unit ?? "-"}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Stok</div>
+              <div className="text-ink">
+                {item.total_stock ?? 0} {item.unit ?? ""}
+              </div>
             </div>
           </div>
 

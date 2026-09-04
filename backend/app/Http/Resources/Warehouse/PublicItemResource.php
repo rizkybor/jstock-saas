@@ -12,6 +12,9 @@ class PublicItemResource extends JsonResource
      * deliberately omits price_buy/price_sell (see PublicProductResource
      * for the same reasoning applied to the Inventory Gas Kalibrasi module):
      * a scanned label should confirm identity, not leak internal pricing.
+     * Current stock is included, though — unlike price, it's operational
+     * (not financial) information a warehouse worker scanning the label
+     * needs to see.
      *
      * @return array<string, mixed>
      */
@@ -23,6 +26,7 @@ class PublicItemResource extends JsonResource
             'barcode_type' => $this->barcode_type,
             'category_name' => $this->whenLoaded('category', fn () => $this->category?->name),
             'unit' => $this->unit,
+            'total_stock' => $this->when($this->relationLoaded('stocks'), fn () => (int) $this->stocks->sum('qty')),
         ];
     }
 }

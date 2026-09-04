@@ -80,7 +80,7 @@ class PublicScanController extends Controller
         $item = WarehouseItem::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('sku', $sku)
-            ->with('category')
+            ->with(['category', 'stocks'])
             ->firstOrFail();
 
         return response()->json([
