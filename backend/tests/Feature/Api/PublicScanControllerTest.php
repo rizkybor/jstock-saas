@@ -86,6 +86,53 @@ class PublicScanControllerTest extends TestCase
         $this->assertStringNotContainsString('Rahasia Dagang', $response->getContent());
     }
 
+    public function test_a_product_scan_reconstructs_stock_before_and_after_only_for_approved_transactions(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = User::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Owner',
+            'email' => "owner-{$tenant->id}@test.local",
+            'password' => 'password123',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+        $product = $this->makeProduct($tenant, 40);
+
+        // Approved: actually moves stock 40 -> 35.
+        $approvedId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Andi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 5]],
+        ])->json('data.id');
+        $this->actingAs($owner, 'sanctum')->patchJson("/api/transactions/{$approvedId}/approve")->assertOk();
+
+        // Still pending: leaves stock untouched at 35.
+        $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'Budi',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 3]],
+        ])->assertCreated();
+
+        $this->getJson("/api/public/{$tenant->token}/products/scan/{$product->unique_id}")
+            ->assertOk()
+            ->assertJsonPath('data.stock_qty', 35)
+            ->assertJsonCount(2, 'data.transactions')
+            // Newest first: the still-pending one never touched stock.
+            ->assertJsonPath('data.transactions.0.status', 'pending')
+            ->assertJsonPath('data.transactions.0.stock_before', 35)
+            ->assertJsonPath('data.transactions.0.stock_after', 35)
+            // The approved one is what actually moved it from 40 down to 35.
+            ->assertJsonPath('data.transactions.1.status', 'approved')
+            ->assertJsonPath('data.transactions.1.stock_before', 40)
+            ->assertJsonPath('data.transactions.1.stock_after', 35);
+    }
+
     public function test_a_product_cannot_be_looked_up_through_another_tenants_token(): void
     {
         $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);

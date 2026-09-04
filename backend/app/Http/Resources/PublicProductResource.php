@@ -30,13 +30,44 @@ class PublicProductResource extends JsonResource
             'series' => new PublicProductSeriesResource($this->whenLoaded('series')),
             'stock_qty' => $this->stock_qty,
             'input_date' => $this->input_date?->toDateString(),
-            'transactions' => $this->when($this->relationLoaded('transactionItems'), fn () => $this->transactionItems->map(fn ($item) => [
+            'transactions' => $this->when($this->relationLoaded('transactionItems'), fn () => $this->transactionHistory()),
+        ];
+    }
+
+    /**
+     * Unlike Warehouse's stock_movements ledger, a product has no separate
+     * audit trail of every stock change — stock_qty only ever decrements
+     * automatically when a transaction is approved (TransactionController::
+     * finalizeApproval()); pending/rejected/cancelled transactions never
+     * touch it. So stock_before/stock_after here is reconstructed by
+     * walking the (newest-first) loaded transactions backwards from the
+     * current stock_qty, subtracting qty only for approved ones. This is
+     * only an approximation if stock_qty was ever hand-edited directly
+     * (e.g. via the product edit form) outside the transaction flow, since
+     * that kind of change leaves no record to walk back through.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function transactionHistory(): array
+    {
+        $running = (int) $this->stock_qty;
+
+        return $this->transactionItems->map(function ($item) use (&$running) {
+            $isApproved = $item->transaction->status === 'approved';
+
+            $after = $running;
+            $before = $isApproved ? $running + $item->qty : $running;
+            $running = $before;
+
+            return [
                 'id' => $item->transaction->id,
                 'trx_number' => $item->transaction->trx_number,
                 'status' => $item->transaction->status,
                 'qty' => $item->qty,
+                'stock_before' => $before,
+                'stock_after' => $after,
                 'created_at' => $item->transaction->created_at,
-            ])->values()),
-        ];
+            ];
+        })->values()->all();
     }
 }

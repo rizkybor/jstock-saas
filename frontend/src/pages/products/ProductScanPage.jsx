@@ -110,7 +110,11 @@ export default function ProductScanPage() {
                       <span className="font-mono text-sm font-semibold text-ink">{trx.trx_number}</span>
                       <Badge status={trx.status}>{trx.status}</Badge>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-ink-muted">
+                    <div className="text-sm text-ink">
+                      Sisa Stok: <span className="font-semibold">{trx.stock_after}</span> dari Stok Awal:{" "}
+                      <span className="font-semibold">{trx.stock_before}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between text-xs text-ink-muted">
                       <span>{new Date(trx.created_at).toLocaleString("id-ID")}</span>
                       <span>Qty: {trx.qty}</span>
                     </div>
