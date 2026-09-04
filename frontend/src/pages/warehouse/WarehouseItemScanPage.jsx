@@ -74,7 +74,7 @@ export default function WarehouseItemScanPage() {
                 />
               )}
 
-              <div className="grid flex-1 grid-cols-2 gap-3 text-sm">
+              <div className="grid flex-1 grid-cols-2 gap-3 text-xs">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">SKU</div>
                   <div className="text-ink">{item.sku ?? "-"}</div>
