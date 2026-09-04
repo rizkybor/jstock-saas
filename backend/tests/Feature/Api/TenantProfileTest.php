@@ -94,6 +94,31 @@ class TenantProfileTest extends TestCase
         $this->assertNull($tenant->fresh()->logo_path);
     }
 
+    /**
+     * AppLayout's sidebar branding reads this off /auth/me directly (not a
+     * separate /tenant call) so it's available immediately on login without
+     * flashing the default jstock branding first.
+     */
+    public function test_auth_me_exposes_the_tenant_logo_and_falls_back_to_null_without_one(): void
+    {
+        Storage::fake('public');
+        $tenant = Tenant::create(['name' => 'CV Contoh', 'slug' => 'cv-contoh', 'status' => 'trial']);
+        $owner = $this->makeUser($tenant, 'owner');
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson('/api/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.tenant_name', 'CV Contoh')
+            ->assertJsonPath('data.tenant_logo_url', null);
+
+        $this->actingAs($owner, 'sanctum')->postJson('/api/tenant/logo', ['logo' => UploadedFile::fake()->image('logo.png')])->assertOk();
+
+        $this->actingAs($owner->refresh(), 'sanctum')
+            ->getJson('/api/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.tenant_logo_url', fn ($url) => str_contains($url, 'storage/tenant-logos/'));
+    }
+
     public function test_logo_upload_rejects_a_non_image_file(): void
     {
         Storage::fake('public');

@@ -43,9 +43,15 @@ export default function AppLayout() {
         }`}
       >
         <div className="mb-5 flex items-center justify-between px-2">
-          <div className="flex items-center gap-2.5">
-            <div className="h-6.5 w-6.5 rounded-[7px] bg-brand-mark" />
-            <span className="text-lg font-bold tracking-[-0.25px] text-ink">jstock</span>
+          <div className="flex min-w-0 items-center gap-2.5">
+            {user?.role !== "super_admin" && user?.tenant_logo_url ? (
+              <img src={user.tenant_logo_url} alt={user.tenant_name ?? "Logo"} className="h-6.5 w-6.5 shrink-0 rounded-[7px] object-cover" />
+            ) : (
+              <div className="h-6.5 w-6.5 shrink-0 rounded-[7px] bg-brand-mark" />
+            )}
+            <span className="truncate text-lg font-bold tracking-[-0.25px] text-ink">
+              {user?.role !== "super_admin" && user?.tenant_name ? user.tenant_name : "jstock"}
+            </span>
           </div>
           <button
             aria-label="Tutup menu"
@@ -134,7 +140,9 @@ export default function AppLayout() {
           <button aria-label="Buka menu" className="cursor-pointer text-ink" onClick={() => setMenuOpen(true)}>
             ☰
           </button>
-          <span className="text-sm font-semibold text-ink">jstock</span>
+          <span className="truncate text-sm font-semibold text-ink">
+            {user?.role !== "super_admin" && user?.tenant_name ? user.tenant_name : "jstock"}
+          </span>
         </header>
         <main className="flex-1 px-4 py-6 sm:px-8 sm:py-7">
           <Outlet />

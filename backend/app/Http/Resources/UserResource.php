@@ -7,6 +7,7 @@ use App\Models\TenantMenuSetting;
 use App\Support\TenantToken;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class UserResource extends JsonResource
 {
@@ -25,6 +26,9 @@ class UserResource extends JsonResource
             // its /:tenantToken/... routes and never sees the real id.
             'tenant_token' => $this->tenant_id ? TenantToken::encode($this->tenant_id) : null,
             'tenant_name' => $this->tenant?->name,
+            // Sidebar branding falls back to the default jstock logo/name
+            // when a tenant hasn't uploaded one (see Profil Perusahaan).
+            'tenant_logo_url' => $this->tenant?->logo_path ? Storage::disk('public')->url($this->tenant->logo_path) : null,
             'permissions' => $this->permissions(),
             // Module keys this tenant actually has, and the effective
             // enabled/disabled state of every menu for each of those
