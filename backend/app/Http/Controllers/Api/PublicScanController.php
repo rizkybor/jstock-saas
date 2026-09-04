@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PublicProductResource;
 use App\Http\Resources\PublicTransactionResource;
+use App\Http\Resources\Warehouse\PublicItemResource;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\Transaction;
+use App\Models\WarehouseItem;
 
 /**
  * Unauthenticated landing endpoints for a scanned product/transaction QR
@@ -27,15 +29,15 @@ use App\Models\Transaction;
  */
 class PublicScanController extends Controller
 {
-    private function assertTenantActive(Tenant $tenant): void
+    private function assertTenantActive(Tenant $tenant, string $moduleKey): void
     {
         abort_if($tenant->status === 'suspended', 403, 'Akun perusahaan ini sedang disuspend.');
-        abort_unless($tenant->hasModule('inventory-gas-kalibrasi'), 403, 'Modul ini tidak aktif untuk perusahaan ini.');
+        abort_unless($tenant->hasModule($moduleKey), 403, 'Modul ini tidak aktif untuk perusahaan ini.');
     }
 
     public function product(Tenant $tenant, string $uniqueId)
     {
-        $this->assertTenantActive($tenant);
+        $this->assertTenantActive($tenant, 'inventory-gas-kalibrasi');
 
         $product = Product::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
@@ -52,7 +54,7 @@ class PublicScanController extends Controller
 
     public function transaction(Tenant $tenant, string $trxNumber)
     {
-        $this->assertTenantActive($tenant);
+        $this->assertTenantActive($tenant, 'inventory-gas-kalibrasi');
 
         $transaction = Transaction::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
@@ -67,6 +69,23 @@ class PublicScanController extends Controller
         return response()->json([
             'success' => true,
             'data' => new PublicTransactionResource($transaction),
+            'message' => null,
+        ]);
+    }
+
+    public function warehouseItem(Tenant $tenant, string $uniqueId)
+    {
+        $this->assertTenantActive($tenant, 'warehouse-general');
+
+        $item = WarehouseItem::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('unique_id', $uniqueId)
+            ->with('category')
+            ->firstOrFail();
+
+        return response()->json([
+            'success' => true,
+            'data' => new PublicItemResource($item),
             'message' => null,
         ]);
     }

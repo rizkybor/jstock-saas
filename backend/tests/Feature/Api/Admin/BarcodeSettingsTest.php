@@ -47,7 +47,9 @@ class BarcodeSettingsTest extends TestCase
             ->assertJsonPath('data.product.enabled', false)
             ->assertJsonPath('data.product.allowed_types', [])
             ->assertJsonPath('data.transaction.enabled', false)
-            ->assertJsonPath('data.transaction.allowed_types', []);
+            ->assertJsonPath('data.transaction.allowed_types', [])
+            ->assertJsonPath('data.warehouse-item.enabled', false)
+            ->assertJsonPath('data.warehouse-item.allowed_types', []);
     }
 
     public function test_super_admin_can_configure_barcode_settings_per_feature(): void
@@ -59,14 +61,17 @@ class BarcodeSettingsTest extends TestCase
             ->putJson("/api/admin/tenants/{$tenant->token}/barcode-settings", [
                 'product' => ['enabled' => true, 'allowed_types' => ['qr']],
                 'transaction' => ['enabled' => true, 'allowed_types' => ['39']],
+                'warehouse-item' => ['enabled' => true, 'allowed_types' => ['qr']],
             ])
             ->assertOk()
             ->assertJsonPath('data.product.enabled', true)
             ->assertJsonPath('data.product.allowed_types', ['qr'])
             ->assertJsonPath('data.transaction.enabled', true)
-            ->assertJsonPath('data.transaction.allowed_types', ['39']);
+            ->assertJsonPath('data.transaction.allowed_types', ['39'])
+            ->assertJsonPath('data.warehouse-item.enabled', true)
+            ->assertJsonPath('data.warehouse-item.allowed_types', ['qr']);
 
-        $this->assertSame(2, TenantBarcodeSetting::where('tenant_id', $tenant->id)->count());
+        $this->assertSame(3, TenantBarcodeSetting::where('tenant_id', $tenant->id)->count());
     }
 
     public function test_barcode_settings_reject_unknown_types(): void
@@ -78,6 +83,7 @@ class BarcodeSettingsTest extends TestCase
             ->putJson("/api/admin/tenants/{$tenant->token}/barcode-settings", [
                 'product' => ['enabled' => true, 'allowed_types' => ['itf-14']],
                 'transaction' => ['enabled' => false, 'allowed_types' => []],
+                'warehouse-item' => ['enabled' => false, 'allowed_types' => []],
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('product.allowed_types.0');
@@ -93,6 +99,7 @@ class BarcodeSettingsTest extends TestCase
             ->putJson("/api/admin/tenants/{$tenant->token}/barcode-settings", [
                 'product' => ['enabled' => true, 'allowed_types' => ['128']],
                 'transaction' => ['enabled' => false, 'allowed_types' => []],
+                'warehouse-item' => ['enabled' => false, 'allowed_types' => []],
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('product.allowed_types.0');
@@ -102,9 +109,20 @@ class BarcodeSettingsTest extends TestCase
             ->putJson("/api/admin/tenants/{$tenant->token}/barcode-settings", [
                 'product' => ['enabled' => false, 'allowed_types' => []],
                 'transaction' => ['enabled' => true, 'allowed_types' => ['qr']],
+                'warehouse-item' => ['enabled' => false, 'allowed_types' => []],
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('transaction.allowed_types.0');
+
+        // "128" is valid too, but warehouse item labels are QR-only.
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/admin/tenants/{$tenant->token}/barcode-settings", [
+                'product' => ['enabled' => false, 'allowed_types' => []],
+                'transaction' => ['enabled' => false, 'allowed_types' => []],
+                'warehouse-item' => ['enabled' => true, 'allowed_types' => ['128']],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('warehouse-item.allowed_types.0');
     }
 
     public function test_only_super_admin_can_manage_barcode_settings(): void

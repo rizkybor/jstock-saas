@@ -2,7 +2,22 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Skeleton, Tabs } from "../../components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  CodeChip,
+  ConfirmDialog,
+  DataTable,
+  IconButton,
+  Input,
+  Modal,
+  PageHeader,
+  PencilIcon,
+  Skeleton,
+  Tabs,
+  TrashIcon,
+} from "../../components/ui";
 import { barcodeTypesForFeature } from "../../utils/barcode";
 import { hasErrors, validate } from "../../utils/validate";
 import { fetchProvinces } from "../../utils/wilayah";
@@ -41,11 +56,13 @@ const TABS = [
 const BARCODE_FEATURE_LABELS = {
   product: "Tambah Barang",
   transaction: "Transaksi Barang Keluar",
+  "warehouse-item": "Tambah Barang Gudang",
 };
 
 const EMPTY_BARCODE_SETTINGS = {
   product: { enabled: false, allowed_types: [] },
   transaction: { enabled: false, allowed_types: [] },
+  "warehouse-item": { enabled: false, allowed_types: [] },
 };
 
 const SUBSCRIPTION_STATUS_LABELS = {
@@ -967,17 +984,14 @@ export default function TenantConfigurationPage() {
                     header: "Aksi",
                     render: (row) => (
                       <div className="flex flex-wrap gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => openEditUser(row)}>
-                          Edit
-                        </Button>
-                        <Button
+                        <IconButton icon={<PencilIcon />} label="Edit" onClick={() => openEditUser(row)} />
+                        <IconButton
+                          icon={<TrashIcon />}
+                          label="Hapus"
                           variant="danger"
-                          size="sm"
                           loading={deletingUserId === row.id}
                           onClick={() => setConfirmDeleteUser(row)}
-                        >
-                          Hapus
-                        </Button>
+                        />
                       </div>
                     ),
                   },
@@ -1245,9 +1259,7 @@ export default function TenantConfigurationPage() {
                                 >
                                   ↓
                                 </Button>
-                                <Button type="button" variant="danger" size="sm" onClick={() => removeApprovalStep(index)}>
-                                  Hapus
-                                </Button>
+                                <IconButton icon={<TrashIcon />} label="Hapus" variant="danger" onClick={() => removeApprovalStep(index)} />
                               </div>
                             </div>
                           ))}

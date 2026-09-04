@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
-import { Alert, Button, Card, CodeChip, Input, RequiredMark, Select, Skeleton } from "../../components/ui";
+import { Alert, Button, Card, CodeChip, IconButton, Input, RequiredMark, Select, Skeleton, TrashIcon } from "../../components/ui";
 import { BARCODE_TYPES, barcodeImageUrl, barcodePayload, transactionScanUrl } from "../../utils/barcode";
 import { EMPTY_ADDRESS, fetchProvinces } from "../../utils/wilayah";
 
@@ -279,9 +279,7 @@ export default function TransactionCreatePage() {
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <span className="text-sm font-semibold text-ink">{formatCurrency(item.product.unit_cost * item.qty)}</span>
-                      <Button type="button" variant="danger" size="sm" onClick={() => removeItem(index)}>
-                        Hapus
-                      </Button>
+                      <IconButton icon={<TrashIcon />} label="Hapus" variant="danger" onClick={() => removeItem(index)} />
                     </div>
                   </div>
                 ))}

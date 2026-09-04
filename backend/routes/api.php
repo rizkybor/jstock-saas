@@ -44,6 +44,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::middleware('throttle:30,1')->group(function () {
     Route::get('/public/{tenant}/products/scan/{uniqueId}', [PublicScanController::class, 'product']);
     Route::get('/public/{tenant}/transactions/scan/{trxNumber}', [PublicScanController::class, 'transaction']);
+    Route::get('/public/{tenant}/warehouse/items/scan/{uniqueId}', [PublicScanController::class, 'warehouseItem']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -60,14 +61,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/logo', [TenantProfileController::class, 'destroyLogo'])->middleware('permission:tenant.update');
     });
 
+    // Core/platform-level, like /tenant above — read by product, warehouse
+    // item, and transaction create-forms alike, so it isn't nested inside
+    // any single module:<key> gate (a Warehouse-only tenant has no
+    // inventory-gas-kalibrasi permissions to satisfy a gate there).
+    Route::get('/barcode-settings', [BarcodeSettingController::class, 'index']);
+
     // Everything below belongs to the "Inventory Gas Kalibrasi" module —
     // future modules (different business processes) get their own prefix
     // and their own module:<key> gate here, side by side with this one.
     Route::middleware('module:inventory-gas-kalibrasi')->group(function () {
-        // barcode-settings is cross-cutting (read by both the products and
-        // transactions forms) so it isn't gated behind any single menu.
-        Route::get('/barcode-settings', [BarcodeSettingController::class, 'index'])->middleware('permission:dashboard.view');
-
         Route::middleware('menu:inventory-gas-kalibrasi,dashboard')->group(function () {
             Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('permission:dashboard.view');
         });
@@ -132,6 +135,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('menu:warehouse-general,items')->group(function () {
             Route::get('/items', [WarehouseItemController::class, 'index'])->middleware('permission:warehouse-items.view');
             Route::post('/items', [WarehouseItemController::class, 'store'])->middleware('permission:warehouse-items.create');
+            Route::get('/items/lookup/{uniqueId}', [WarehouseItemController::class, 'lookup'])->middleware('permission:warehouse-items.view');
             Route::get('/items/{item}', [WarehouseItemController::class, 'show'])->middleware('permission:warehouse-items.view');
             Route::put('/items/{item}', [WarehouseItemController::class, 'update'])->middleware('permission:warehouse-items.update');
             Route::delete('/items/{item}', [WarehouseItemController::class, 'destroy'])->middleware('permission:warehouse-items.delete');

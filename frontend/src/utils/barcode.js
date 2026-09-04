@@ -23,6 +23,7 @@ export function barcodeTypeLabel(type) {
 export const FEATURE_BARCODE_TYPES = {
   product: ["qr"],
   transaction: ["128", "39"],
+  "warehouse-item": ["qr"],
 };
 
 export function barcodeTypesForFeature(feature) {
@@ -42,6 +43,10 @@ export function productScanUrl(tenantId, uniqueId) {
 
 export function transactionScanUrl(tenantId, trxNumber) {
   return `${window.location.origin}/${tenantId}/transactions/scan/${encodeURIComponent(trxNumber)}`;
+}
+
+export function warehouseItemScanUrl(tenantId, uniqueId) {
+  return `${window.location.origin}/${tenantId}/warehouse/items/scan/${encodeURIComponent(uniqueId)}`;
 }
 
 /**

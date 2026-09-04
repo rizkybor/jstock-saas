@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import AddressFieldset from "../../components/AddressFieldset";
 import apiClient from "../../api/client";
-import { Alert, Button, Input, PageHeader, Skeleton } from "../../components/ui";
+import { Alert, Button, IconButton, Input, PageHeader, Skeleton, TrashIcon } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import { hasErrors, validate } from "../../utils/validate";
 import { fetchProvinces } from "../../utils/wilayah";
@@ -185,9 +185,13 @@ export default function CompanyProfilePage() {
                       {logoUrl ? "Ganti Logo" : "Upload Logo"}
                     </Button>
                     {logoUrl && (
-                      <Button type="button" variant="outline-danger" size="sm" loading={logoBusy} onClick={handleLogoRemove}>
-                        Hapus
-                      </Button>
+                      <IconButton
+                        icon={<TrashIcon />}
+                        label="Hapus Logo"
+                        variant="outline-danger"
+                        loading={logoBusy}
+                        onClick={handleLogoRemove}
+                      />
                     )}
                   </div>
                   <span className="text-xs text-ink-muted">PNG/JPG/WEBP, maks 2MB.</span>

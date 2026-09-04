@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Input, Textarea } from "./ui";
+import { IconButton, Input, Textarea, TrashIcon } from "./ui";
 import { fetchDistricts, fetchRegencies, fetchVillages } from "../utils/wilayah";
 
 const selectClass =
@@ -101,11 +101,7 @@ export default function AddressFieldset({ value, provinces, onChange, onRemove, 
               onChange={(e) => onChange({ ...value, label: e.target.value })}
             />
           </div>
-          {onRemove && (
-            <Button type="button" variant="danger" size="sm" onClick={onRemove}>
-              Hapus
-            </Button>
-          )}
+          {onRemove && <IconButton icon={<TrashIcon />} label="Hapus" variant="danger" onClick={onRemove} />}
         </div>
       )}
 

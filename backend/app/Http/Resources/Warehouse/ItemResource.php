@@ -15,6 +15,8 @@ class ItemResource extends JsonResource
         return [
             'id' => $this->id,
             'sku' => $this->sku,
+            'unique_id' => $this->unique_id,
+            'barcode_type' => $this->barcode_type,
             'name' => $this->name,
             'warehouse_category_id' => $this->warehouse_category_id,
             'category_name' => $this->whenLoaded('category', fn () => $this->category?->name),

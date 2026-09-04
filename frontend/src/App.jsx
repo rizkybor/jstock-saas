@@ -14,6 +14,7 @@ import WarehouseItemsPage from "./pages/warehouse/WarehouseItemsPage";
 import WarehouseStockPage from "./pages/warehouse/WarehouseStockPage";
 import WarehousePurchaseOrdersPage from "./pages/warehouse/WarehousePurchaseOrdersPage";
 import WarehouseStockOpnamePage from "./pages/warehouse/WarehouseStockOpnamePage";
+import WarehouseItemScanPage from "./pages/warehouse/WarehouseItemScanPage";
 import CompanyProfilePage from "./pages/settings/CompanyProfilePage";
 import AdminTenantsPage from "./pages/admin/AdminTenantsPage";
 import TenantConfigurationPage from "./pages/admin/TenantConfigurationPage";
@@ -41,6 +42,7 @@ function App() {
           RequireOwnTenant/ProtectedRoute. */}
       <Route path="/:tenantId/products/scan/:uniqueId" element={<ProductScanPage />} />
       <Route path="/:tenantId/transactions/scan/:trxNumber" element={<TransactionScanPage />} />
+      <Route path="/:tenantId/warehouse/items/scan/:uniqueId" element={<WarehouseItemScanPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>

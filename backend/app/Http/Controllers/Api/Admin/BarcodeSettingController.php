@@ -25,14 +25,13 @@ class BarcodeSettingController extends Controller
 
     public function update(Request $request, Tenant $tenant)
     {
-        $data = $request->validate([
-            'product.enabled' => ['required', 'boolean'],
-            'product.allowed_types' => ['array'],
-            'product.allowed_types.*' => [Rule::in(TenantBarcodeSetting::FEATURE_TYPES['product'])],
-            'transaction.enabled' => ['required', 'boolean'],
-            'transaction.allowed_types' => ['array'],
-            'transaction.allowed_types.*' => [Rule::in(TenantBarcodeSetting::FEATURE_TYPES['transaction'])],
-        ]);
+        $rules = [];
+        foreach (TenantBarcodeSetting::FEATURES as $feature) {
+            $rules["{$feature}.enabled"] = ['required', 'boolean'];
+            $rules["{$feature}.allowed_types"] = ['array'];
+            $rules["{$feature}.allowed_types.*"] = [Rule::in(TenantBarcodeSetting::FEATURE_TYPES[$feature])];
+        }
+        $data = $request->validate($rules);
 
         foreach (TenantBarcodeSetting::FEATURES as $feature) {
             TenantBarcodeSetting::updateOrCreate(

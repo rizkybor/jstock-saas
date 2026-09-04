@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, ConfirmDialog, DataTable, Input, Modal, PageHeader, Select, Textarea } from "../../components/ui";
+import { Alert, Badge, Button, ConfirmDialog, DataTable, IconButton, Input, Modal, PageHeader, PencilIcon, Select, Textarea, TrashIcon } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { hasErrors, validate } from "../../utils/validate";
@@ -133,14 +133,10 @@ export default function WarehouseLocationsPage() {
       render: (row) => (
         <div className="flex flex-wrap gap-2">
           <Can permission="warehouse-locations.update">
-            <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
-              Edit
-            </Button>
+            <IconButton icon={<PencilIcon />} label="Edit" onClick={() => openEdit(row)} />
           </Can>
           <Can permission="warehouse-locations.delete">
-            <Button variant="danger" size="sm" onClick={() => setConfirmDelete(row)}>
-              Hapus
-            </Button>
+            <IconButton icon={<TrashIcon />} label="Hapus" variant="danger" onClick={() => setConfirmDelete(row)} />
           </Can>
         </div>
       ),

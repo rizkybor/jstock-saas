@@ -1,6 +1,23 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Tabs, Textarea } from "../../components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  ConfirmDialog,
+  DataTable,
+  EyeIcon,
+  IconButton,
+  Input,
+  Modal,
+  PageHeader,
+  Pagination,
+  PencilIcon,
+  Select,
+  Tabs,
+  Textarea,
+  TrashIcon,
+} from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 
@@ -272,11 +289,7 @@ export default function WarehousePurchaseOrdersPage() {
     {
       key: "actions",
       header: "Aksi",
-      render: (row) => (
-        <Button variant="secondary" size="sm" onClick={() => openDetail(row)}>
-          Detail
-        </Button>
-      ),
+      render: (row) => <IconButton icon={<EyeIcon />} label="Detail" onClick={() => openDetail(row)} />,
     },
   ];
 
@@ -294,14 +307,10 @@ export default function WarehousePurchaseOrdersPage() {
       render: (row) => (
         <div className="flex flex-wrap gap-2">
           <Can permission="warehouse-suppliers.update">
-            <Button variant="secondary" size="sm" onClick={() => openEditSupplier(row)}>
-              Edit
-            </Button>
+            <IconButton icon={<PencilIcon />} label="Edit" onClick={() => openEditSupplier(row)} />
           </Can>
           <Can permission="warehouse-suppliers.delete">
-            <Button variant="danger" size="sm" onClick={() => setConfirmDeleteSupplier(row)}>
-              Hapus
-            </Button>
+            <IconButton icon={<TrashIcon />} label="Hapus" variant="danger" onClick={() => setConfirmDeleteSupplier(row)} />
           </Can>
         </div>
       ),
@@ -460,9 +469,7 @@ export default function WarehousePurchaseOrdersPage() {
                         value={line.unit_cost}
                         onChange={(e) => updatePoLine(index, { unit_cost: e.target.value })}
                       />
-                      <Button type="button" variant="outline-danger" size="sm" onClick={() => removePoLine(index)}>
-                        Hapus
-                      </Button>
+                      <IconButton icon={<TrashIcon />} label="Hapus" variant="outline-danger" onClick={() => removePoLine(index)} />
                     </div>
                   ))}
                 </div>

@@ -1,8 +1,27 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Tabs, Textarea } from "../../components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  ConfirmDialog,
+  DataTable,
+  DocumentIcon,
+  IconButton,
+  Input,
+  Modal,
+  PageHeader,
+  Pagination,
+  PencilIcon,
+  Select,
+  Tabs,
+  Textarea,
+  TrashIcon,
+} from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
+import { BARCODE_TYPES, barcodeImageUrl, barcodePayload, downloadBarcodeLabel, warehouseItemScanUrl } from "../../utils/barcode";
 import { hasErrors, validate } from "../../utils/validate";
 
 const EMPTY_FORM = {
@@ -16,6 +35,8 @@ const EMPTY_FORM = {
   notes: "",
   is_inventory_grant: false,
   inventory_grant_source: "",
+  unique_id: "",
+  barcode_type: "",
 };
 const EMPTY_CATEGORY_FORM = { name: "" };
 
@@ -25,6 +46,7 @@ const formatCurrency = (value) => (value === null || value === undefined ? "-" :
 
 export default function WarehouseItemsPage() {
   const { can } = useAuth();
+  const { tenantId } = useParams();
   const [tab, setTab] = useState("items"); // "items" | "categories"
 
   const [categories, setCategories] = useState([]);
@@ -37,6 +59,13 @@ export default function WarehouseItemsPage() {
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [barcodeSettings, setBarcodeSettings] = useState({ enabled: false, allowed_types: [] });
+
+  const [scanCode, setScanCode] = useState("");
+  const [scanError, setScanError] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+  const [downloadingLabel, setDownloadingLabel] = useState(false);
 
   const [formMode, setFormMode] = useState(null); // "create" | "edit" | null
   const [editingItem, setEditingItem] = useState(null);
@@ -85,15 +114,62 @@ export default function WarehouseItemsPage() {
     }
   };
 
+  const loadBarcodeSettings = async () => {
+    try {
+      const { data } = await apiClient.get("/barcode-settings");
+      setBarcodeSettings(data.data["warehouse-item"]);
+    } catch {
+      // Non-fatal: barcode picker just stays hidden.
+    }
+  };
+
   useEffect(() => {
     loadCategories();
     loadItems(1);
+    loadBarcodeSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFilterSubmit = (event) => {
     event.preventDefault();
     loadItems(1);
+  };
+
+  // Handheld scanners act like a keyboard, typing the barcode's raw value
+  // (unique_id) into whichever field has focus, then pressing Enter — this
+  // resolves that scan to the same item detail view as clicking a row.
+  const handleScanSubmit = async (event) => {
+    event.preventDefault();
+    if (!scanCode.trim()) return;
+    setScanError(null);
+    setScanning(true);
+    try {
+      const { data } = await apiClient.get(`/warehouse/items/lookup/${encodeURIComponent(scanCode.trim())}`);
+      setDetailItem(data.data);
+      setScanCode("");
+    } catch {
+      setScanError("Barang dengan ID unik tersebut tidak ditemukan.");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const barcodeUrlFor = (item) =>
+    barcodeImageUrl(item.barcode_type, barcodePayload(item.barcode_type, item.unique_id, warehouseItemScanUrl(tenantId, item.unique_id)));
+
+  const handleDownloadLabel = async (item) => {
+    setDownloadingLabel(true);
+    try {
+      await downloadBarcodeLabel({
+        barcodeUrl: barcodeUrlFor(item),
+        lines: [item.name, `SKU: ${item.sku ?? "-"}`, `Kategori: ${item.category_name ?? "-"}`, `ID Unik: ${item.unique_id ?? "-"}`],
+        fileName: `label-${item.unique_id ?? item.id}.png`,
+      });
+    } catch {
+      setError("Gagal mengunduh label barcode.");
+    } finally {
+      setDownloadingLabel(false);
+    }
   };
 
   const openCreate = () => {
@@ -119,6 +195,8 @@ export default function WarehouseItemsPage() {
       notes: item.notes ?? "",
       is_inventory_grant: item.is_inventory_grant ?? false,
       inventory_grant_source: item.inventory_grant_source ?? "",
+      unique_id: item.unique_id ?? "",
+      barcode_type: item.barcode_type ?? "",
     });
   };
 
@@ -273,16 +351,12 @@ export default function WarehouseItemsPage() {
       key: "actions",
       header: "Aksi",
       render: (row) => (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
           <Can permission="warehouse-items.update">
-            <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
-              Edit
-            </Button>
+            <IconButton icon={<PencilIcon />} label="Edit" onClick={() => openEdit(row)} />
           </Can>
           <Can permission="warehouse-items.delete">
-            <Button variant="danger" size="sm" onClick={() => setConfirmDelete(row)}>
-              Hapus
-            </Button>
+            <IconButton icon={<TrashIcon />} label="Hapus" variant="danger" onClick={() => setConfirmDelete(row)} />
           </Can>
         </div>
       ),
@@ -301,14 +375,10 @@ export default function WarehouseItemsPage() {
       render: (row) => (
         <div className="flex flex-wrap gap-2">
           <Can permission="warehouse-items.update">
-            <Button variant="secondary" size="sm" onClick={() => openEditCategory(row)}>
-              Edit
-            </Button>
+            <IconButton icon={<PencilIcon />} label="Edit" onClick={() => openEditCategory(row)} />
           </Can>
           <Can permission="warehouse-items.delete">
-            <Button variant="danger" size="sm" onClick={() => setConfirmDeleteCategory(row)}>
-              Hapus
-            </Button>
+            <IconButton icon={<TrashIcon />} label="Hapus" variant="danger" onClick={() => setConfirmDeleteCategory(row)} />
           </Can>
         </div>
       ),
@@ -350,6 +420,23 @@ export default function WarehouseItemsPage() {
             </div>
           )}
 
+          <form onSubmit={handleScanSubmit} className="mb-3 flex flex-wrap items-start gap-3">
+            <div className="min-w-56 flex-1">
+              <Input
+                placeholder="Scan barcode / ID Unik barang..."
+                value={scanCode}
+                onChange={(e) => {
+                  setScanCode(e.target.value);
+                  setScanError(null);
+                }}
+                error={scanError}
+              />
+            </div>
+            <Button type="submit" variant="secondary" loading={scanning} disabled={!scanCode.trim()}>
+              Lihat Detail
+            </Button>
+          </form>
+
           <form onSubmit={handleFilterSubmit} className="mb-4 flex flex-wrap gap-3">
             <Input
               type="search"
@@ -378,6 +465,7 @@ export default function WarehouseItemsPage() {
             emptyMessage="Belum ada barang gudang."
             startIndex={(meta.current_page - 1) * 10}
             loading={loading}
+            onRowClick={(row) => setDetailItem(row)}
           />
           {!loading && <Pagination currentPage={meta.current_page} lastPage={meta.last_page} total={meta.total} onPageChange={loadItems} />}
         </>
@@ -496,6 +584,39 @@ export default function WarehouseItemsPage() {
               />
             )}
 
+            <Input
+              label="ID Unik"
+              name="unique_id"
+              placeholder="BRG-..."
+              value={form.unique_id}
+              onChange={(e) => setForm({ ...form, unique_id: e.target.value })}
+            />
+
+            {barcodeSettings.enabled && barcodeSettings.allowed_types.length > 0 && (
+              <div>
+                <Select
+                  label="Jenis Barcode"
+                  hint="Kosongkan jika barang ini tidak perlu barcode. ID Unik akan digenerate otomatis bila belum diisi."
+                  value={form.barcode_type}
+                  onChange={(e) => setForm({ ...form, barcode_type: e.target.value })}
+                >
+                  <option value="">Tanpa Barcode</option>
+                  {BARCODE_TYPES.filter((t) => barcodeSettings.allowed_types.includes(t.value)).map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+                {formMode === "edit" && form.barcode_type && form.unique_id && (
+                  <img
+                    src={barcodeImageUrl(form.barcode_type, barcodePayload(form.barcode_type, form.unique_id, warehouseItemScanUrl(tenantId, form.unique_id)))}
+                    alt="Preview barcode"
+                    className="mt-2 h-16 rounded border border-border bg-white p-1"
+                  />
+                )}
+              </div>
+            )}
+
             <Textarea label="Catatan" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
 
             {formError && <Alert>{formError}</Alert>}
@@ -509,6 +630,74 @@ export default function WarehouseItemsPage() {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {detailItem && (
+        <Modal title="Detail Barang" description={detailItem.name} onClose={() => setDetailItem(null)} width="480px">
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">SKU</div>
+                <div className="text-ink">{detailItem.sku ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Kategori</div>
+                <div className="text-ink">{detailItem.category_name ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Satuan</div>
+                <div className="text-ink">{detailItem.unit ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Stok</div>
+                <div className="text-ink">{detailItem.total_stock ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Harga Beli</div>
+                <div className="text-ink">
+                  {detailItem.is_inventory_grant ? `Hibah (${detailItem.inventory_grant_source ?? "-"})` : formatCurrency(detailItem.price_buy)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Harga Jual</div>
+                <div className="text-ink">{detailItem.is_inventory_grant ? "-" : formatCurrency(detailItem.price_sell)}</div>
+              </div>
+            </div>
+
+            {detailItem.notes && (
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Catatan</div>
+                <div className="text-sm text-ink">{detailItem.notes}</div>
+              </div>
+            )}
+
+            {detailItem.barcode_type && detailItem.unique_id && (
+              <div className="rounded-lg border border-border bg-surface-2 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Barcode Barang</div>
+                  <IconButton
+                    icon={<DocumentIcon />}
+                    label="Download Label"
+                    variant="secondary"
+                    loading={downloadingLabel}
+                    onClick={() => handleDownloadLabel(detailItem)}
+                  />
+                </div>
+                <div className="flex items-center gap-4">
+                  <img src={barcodeUrlFor(detailItem)} alt="Barcode" className="h-20 shrink-0 rounded bg-white p-2" />
+                  <div className="text-sm text-ink">
+                    <div>
+                      <span className="text-ink-muted">SKU:</span> {detailItem.sku ?? "-"}
+                    </div>
+                    <div>
+                      <span className="text-ink-muted">ID Unik:</span> {detailItem.unique_id}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </Modal>
       )}
 

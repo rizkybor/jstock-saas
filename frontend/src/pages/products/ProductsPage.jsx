@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import apiClient from "../../api/client";
-import { Alert, Badge, Button, CodeChip, ConfirmDialog, DataTable, Input, Modal, PageHeader, Pagination, Select, Textarea } from "../../components/ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  CodeChip,
+  ConfirmDialog,
+  DataTable,
+  IconButton,
+  Input,
+  Modal,
+  PageHeader,
+  Pagination,
+  PencilIcon,
+  Select,
+  Textarea,
+  TrashIcon,
+} from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import Can from "../../routes/Can";
 import { BARCODE_TYPES, barcodeImageUrl, barcodePayload, downloadBarcodeLabel, productScanUrl } from "../../utils/barcode";
@@ -320,14 +336,16 @@ export default function ProductsPage() {
       render: (row) => (
         <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
           <Can permission="products.update">
-            <Button variant="secondary" size="sm" onClick={() => openEdit(row)}>
-              Edit
-            </Button>
+            <IconButton icon={<PencilIcon />} label="Edit" onClick={() => openEdit(row)} />
           </Can>
           <Can permission="products.delete">
-            <Button variant="danger" size="sm" loading={deletingId === row.id} onClick={() => setConfirmDelete(row)}>
-              Hapus
-            </Button>
+            <IconButton
+              icon={<TrashIcon />}
+              label="Hapus"
+              variant="danger"
+              loading={deletingId === row.id}
+              onClick={() => setConfirmDelete(row)}
+            />
           </Can>
         </div>
       ),
