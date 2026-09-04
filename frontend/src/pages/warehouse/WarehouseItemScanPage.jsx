@@ -59,37 +59,39 @@ export default function WarehouseItemScanPage() {
           <div className="mb-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">Hasil Scan Barcode</div>
           <h1 className="mb-4 text-xl font-bold text-ink">{item.name}</h1>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="rounded-lg border border-border bg-surface-2 p-3">
             {item.barcode_type && (
-              <div className="shrink-0 rounded-lg border border-border bg-surface-2 p-3">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                  Barcode — {barcodeTypeLabel(item.barcode_type)}
-                </div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                Barcode — {barcodeTypeLabel(item.barcode_type)}
+              </div>
+            )}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              {item.barcode_type && (
                 <img
                   src={barcodeImageUrl(item.barcode_type, barcodePayload(item.barcode_type, item.sku, warehouseItemScanUrl(tenantId, item.sku)))}
                   alt="Barcode"
-                  className="h-20 rounded bg-white p-2"
+                  className="h-20 shrink-0 rounded bg-white p-2"
                 />
-              </div>
-            )}
+              )}
 
-            <div className="grid flex-1 grid-cols-2 gap-3 text-sm">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">SKU</div>
-                <div className="text-ink">{item.sku ?? "-"}</div>
-              </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Kategori</div>
-                <div className="text-ink">{item.category_name ?? "-"}</div>
-              </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Satuan</div>
-                <div className="text-ink">{item.unit ?? "-"}</div>
-              </div>
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Stok</div>
-                <div className="text-ink">
-                  {item.total_stock ?? 0} {item.unit ?? ""}
+              <div className="grid flex-1 grid-cols-2 gap-3 text-sm">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">SKU</div>
+                  <div className="text-ink">{item.sku ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Kategori</div>
+                  <div className="text-ink">{item.category_name ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Satuan</div>
+                  <div className="text-ink">{item.unit ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Stok</div>
+                  <div className="text-ink">
+                    {item.total_stock ?? 0} {item.unit ?? ""}
+                  </div>
                 </div>
               </div>
             </div>
