@@ -26,6 +26,7 @@ class Module extends Model
             'reports' => 'Laporan',
         ],
         'warehouse-general' => [
+            'dashboard' => 'Dashboard',
             'locations' => 'Gudang & Rak',
             'items' => 'Data Barang Gudang',
             'stock' => 'Stok Masuk & Keluar',
@@ -48,7 +49,7 @@ class Module extends Model
             'clients', 'products', 'product-series', 'transactions', 'invoices', 'signatures', 'reports', 'dashboard',
         ],
         'warehouse-general' => [
-            'warehouse-locations', 'warehouse-items', 'warehouse-stock', 'warehouse-suppliers', 'warehouse-purchase-orders',
+            'warehouse-dashboard', 'warehouse-locations', 'warehouse-items', 'warehouse-stock', 'warehouse-suppliers', 'warehouse-purchase-orders',
         ],
     ];
 

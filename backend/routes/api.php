@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\TenantProfileController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\Warehouse\CategoryController as WarehouseCategoryController;
+use App\Http\Controllers\Api\Warehouse\DashboardController as WarehouseDashboardController;
 use App\Http\Controllers\Api\Warehouse\ItemController as WarehouseItemController;
 use App\Http\Controllers\Api\Warehouse\LocationController as WarehouseLocationController;
 use App\Http\Controllers\Api\Warehouse\PurchaseOrderController as WarehousePurchaseOrderController;
@@ -125,6 +126,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // opname) from Inventory Gas Kalibrasi above; entirely gated behind its
     // own module:<key>, side by side with it.
     Route::prefix('warehouse')->middleware('module:warehouse-general')->group(function () {
+        Route::middleware('menu:warehouse-general,dashboard')->group(function () {
+            Route::get('/dashboard/summary', [WarehouseDashboardController::class, 'summary'])->middleware('permission:warehouse-dashboard.view');
+        });
+
         Route::middleware('menu:warehouse-general,locations')->group(function () {
             Route::get('/locations', [WarehouseLocationController::class, 'index'])->middleware('permission:warehouse-locations.view');
             Route::post('/locations', [WarehouseLocationController::class, 'store'])->middleware('permission:warehouse-locations.create');

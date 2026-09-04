@@ -9,6 +9,7 @@ import TransactionsPage from "./pages/transactions/TransactionsPage";
 import TransactionCreatePage from "./pages/transactions/TransactionCreatePage";
 import TransactionScanPage from "./pages/transactions/TransactionScanPage";
 import LaporanPage from "./pages/reports/LaporanPage";
+import WarehouseDashboardPage from "./pages/warehouse/WarehouseDashboardPage";
 import WarehouseLocationsPage from "./pages/warehouse/WarehouseLocationsPage";
 import WarehouseItemsPage from "./pages/warehouse/WarehouseItemsPage";
 import WarehouseStockPage from "./pages/warehouse/WarehouseStockPage";
@@ -54,6 +55,7 @@ function App() {
             <Route path="/:tenantId/transactions/new" element={<TransactionCreatePage />} />
             <Route path="/:tenantId/reports" element={<LaporanPage />} />
 
+            <Route path="/:tenantId/warehouse/dashboard" element={<WarehouseDashboardPage />} />
             <Route path="/:tenantId/warehouse/locations" element={<WarehouseLocationsPage />} />
             <Route path="/:tenantId/warehouse/items" element={<WarehouseItemsPage />} />
             <Route path="/:tenantId/warehouse/stock" element={<WarehouseStockPage />} />

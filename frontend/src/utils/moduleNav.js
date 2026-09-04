@@ -14,6 +14,7 @@ export const MODULE_NAV_ITEMS = {
     { to: `/${tenantId}/reports`, label: "Laporan", permission: "reports.view", menu: "reports" },
   ],
   "warehouse-general": (tenantId) => [
+    { to: `/${tenantId}/warehouse/dashboard`, label: "Dashboard", permission: "warehouse-dashboard.view", menu: "dashboard" },
     { to: `/${tenantId}/warehouse/locations`, label: "Gudang & Rak", permission: "warehouse-locations.view", menu: "locations" },
     { to: `/${tenantId}/warehouse/items`, label: "Data Barang Gudang", permission: "warehouse-items.view", menu: "items" },
     { to: `/${tenantId}/warehouse/stock`, label: "Stok Masuk & Keluar", permission: "warehouse-stock.view", menu: "stock" },
