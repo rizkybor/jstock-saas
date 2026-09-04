@@ -26,7 +26,7 @@ class WarehouseItemBarcodeTest extends TestCase
         ]);
     }
 
-    public function test_creating_an_item_with_an_allowed_barcode_type_autogenerates_a_unique_id(): void
+    public function test_creating_an_item_with_an_allowed_barcode_type_requires_and_keeps_its_sku(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
         $this->enableWarehouseModule($tenant);
@@ -35,11 +35,26 @@ class WarehouseItemBarcodeTest extends TestCase
 
         $response = $this->actingAs($owner, 'sanctum')->postJson('/api/warehouse/items', [
             'name' => 'Kardus Sedang',
+            'sku' => 'SKU-001',
             'barcode_type' => 'qr',
         ])->assertCreated();
 
-        $this->assertNotEmpty($response->json('data.unique_id'));
+        $response->assertJsonPath('data.sku', 'SKU-001');
         $response->assertJsonPath('data.barcode_type', 'qr');
+    }
+
+    public function test_creating_an_item_with_a_barcode_type_but_no_sku_is_rejected(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableWarehouseModule($tenant);
+        $owner = $this->makeOwner($tenant);
+        TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'warehouse-item', 'enabled' => true, 'allowed_types' => ['qr']]);
+
+        // A barcode encodes the sku directly — no sku means nothing to encode.
+        $this->actingAs($owner, 'sanctum')->postJson('/api/warehouse/items', [
+            'name' => 'Kardus Sedang',
+            'barcode_type' => 'qr',
+        ])->assertStatus(422)->assertJsonValidationErrors('sku');
     }
 
     public function test_creating_an_item_rejects_a_barcode_type_not_allowed_for_this_tenant(): void
@@ -52,39 +67,41 @@ class WarehouseItemBarcodeTest extends TestCase
         // "128" is a valid barcode type in general, but warehouse items are QR-only.
         $this->actingAs($owner, 'sanctum')->postJson('/api/warehouse/items', [
             'name' => 'Kardus Sedang',
+            'sku' => 'SKU-001',
             'barcode_type' => '128',
         ])->assertStatus(422)->assertJsonValidationErrors('barcode_type');
     }
 
-    public function test_an_item_can_be_looked_up_by_its_unique_id_for_a_barcode_scan(): void
+    public function test_an_item_can_be_looked_up_by_its_sku_for_a_barcode_scan(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
         $this->enableWarehouseModule($tenant);
         $owner = $this->makeOwner($tenant);
         TenantBarcodeSetting::create(['tenant_id' => $tenant->id, 'feature' => 'warehouse-item', 'enabled' => true, 'allowed_types' => ['qr']]);
 
-        $itemId = $this->actingAs($owner, 'sanctum')->postJson('/api/warehouse/items', [
+        $item = $this->actingAs($owner, 'sanctum')->postJson('/api/warehouse/items', [
             'name' => 'Kardus Sedang',
+            'sku' => 'SKU-001',
             'barcode_type' => 'qr',
         ])->json('data');
 
         $this->actingAs($owner, 'sanctum')
-            ->getJson("/api/warehouse/items/lookup/{$itemId['unique_id']}")
+            ->getJson("/api/warehouse/items/lookup/{$item['sku']}")
             ->assertOk()
-            ->assertJsonPath('data.id', $itemId['id']);
+            ->assertJsonPath('data.id', $item['id']);
     }
 
-    public function test_an_item_cannot_be_looked_up_by_unique_id_from_another_tenant(): void
+    public function test_an_item_cannot_be_looked_up_by_sku_from_another_tenant(): void
     {
         $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
         $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'tenant-b', 'status' => 'trial']);
         $this->enableWarehouseModule($tenantA);
         $this->enableWarehouseModule($tenantB);
         $ownerB = $this->makeOwner($tenantB);
-        WarehouseItem::create(['tenant_id' => $tenantA->id, 'name' => 'Barang Tenant A', 'unit' => 'pcs', 'unique_id' => 'BRG-ISOLATED']);
+        WarehouseItem::create(['tenant_id' => $tenantA->id, 'name' => 'Barang Tenant A', 'unit' => 'pcs', 'sku' => 'SKU-ISOLATED']);
 
         $this->actingAs($ownerB, 'sanctum')
-            ->getJson('/api/warehouse/items/lookup/BRG-ISOLATED')
+            ->getJson('/api/warehouse/items/lookup/SKU-ISOLATED')
             ->assertStatus(404);
     }
 
@@ -96,16 +113,16 @@ class WarehouseItemBarcodeTest extends TestCase
             'tenant_id' => $tenant->id,
             'name' => 'Kardus Sedang',
             'unit' => 'pcs',
-            'unique_id' => 'BRG-PUBLICTEST',
+            'sku' => 'SKU-PUBLICTEST',
             'barcode_type' => 'qr',
             'price_buy' => 15000,
             'price_sell' => 25000,
         ]);
 
-        $this->getJson("/api/public/{$tenant->token}/warehouse/items/scan/{$item->unique_id}")
+        $this->getJson("/api/public/{$tenant->token}/warehouse/items/scan/{$item->sku}")
             ->assertOk()
             ->assertJsonPath('data.name', 'Kardus Sedang')
-            ->assertJsonPath('data.unique_id', 'BRG-PUBLICTEST')
+            ->assertJsonPath('data.sku', 'SKU-PUBLICTEST')
             ->assertJsonMissingPath('data.price_buy')
             ->assertJsonMissingPath('data.price_sell');
     }
@@ -113,9 +130,9 @@ class WarehouseItemBarcodeTest extends TestCase
     public function test_public_warehouse_item_scan_is_blocked_when_the_tenant_lacks_the_module(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
-        $item = WarehouseItem::create(['tenant_id' => $tenant->id, 'name' => 'Kardus Sedang', 'unit' => 'pcs', 'unique_id' => 'BRG-NOMODULE']);
+        $item = WarehouseItem::create(['tenant_id' => $tenant->id, 'name' => 'Kardus Sedang', 'unit' => 'pcs', 'sku' => 'SKU-NOMODULE']);
 
-        $this->getJson("/api/public/{$tenant->token}/warehouse/items/scan/{$item->unique_id}")
+        $this->getJson("/api/public/{$tenant->token}/warehouse/items/scan/{$item->sku}")
             ->assertStatus(403);
     }
 

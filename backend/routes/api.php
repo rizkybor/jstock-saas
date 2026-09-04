@@ -45,7 +45,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::middleware('throttle:30,1')->group(function () {
     Route::get('/public/{tenant}/products/scan/{uniqueId}', [PublicScanController::class, 'product']);
     Route::get('/public/{tenant}/transactions/scan/{trxNumber}', [PublicScanController::class, 'transaction']);
-    Route::get('/public/{tenant}/warehouse/items/scan/{uniqueId}', [PublicScanController::class, 'warehouseItem']);
+    Route::get('/public/{tenant}/warehouse/items/scan/{sku}', [PublicScanController::class, 'warehouseItem']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -140,7 +140,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('menu:warehouse-general,items')->group(function () {
             Route::get('/items', [WarehouseItemController::class, 'index'])->middleware('permission:warehouse-items.view');
             Route::post('/items', [WarehouseItemController::class, 'store'])->middleware('permission:warehouse-items.create');
-            Route::get('/items/lookup/{uniqueId}', [WarehouseItemController::class, 'lookup'])->middleware('permission:warehouse-items.view');
+            Route::get('/items/lookup/{sku}', [WarehouseItemController::class, 'lookup'])->middleware('permission:warehouse-items.view');
             Route::get('/items/{item}', [WarehouseItemController::class, 'show'])->middleware('permission:warehouse-items.view');
             Route::put('/items/{item}', [WarehouseItemController::class, 'update'])->middleware('permission:warehouse-items.update');
             Route::delete('/items/{item}', [WarehouseItemController::class, 'destroy'])->middleware('permission:warehouse-items.delete');

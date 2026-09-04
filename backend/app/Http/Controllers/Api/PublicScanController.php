@@ -73,13 +73,13 @@ class PublicScanController extends Controller
         ]);
     }
 
-    public function warehouseItem(Tenant $tenant, string $uniqueId)
+    public function warehouseItem(Tenant $tenant, string $sku)
     {
         $this->assertTenantActive($tenant, 'warehouse-general');
 
         $item = WarehouseItem::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
-            ->where('unique_id', $uniqueId)
+            ->where('sku', $sku)
             ->with('category')
             ->firstOrFail();
 

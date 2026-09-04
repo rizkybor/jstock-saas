@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'tenant_id', 'sku', 'name', 'warehouse_category_id', 'unit', 'price_buy', 'price_sell', 'min_stock', 'notes',
-    'is_inventory_grant', 'inventory_grant_source', 'unique_id', 'barcode_type',
+    'is_inventory_grant', 'inventory_grant_source', 'barcode_type',
 ])]
 class WarehouseItem extends Model
 {

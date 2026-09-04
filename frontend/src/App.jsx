@@ -43,7 +43,7 @@ function App() {
           RequireOwnTenant/ProtectedRoute. */}
       <Route path="/:tenantId/products/scan/:uniqueId" element={<ProductScanPage />} />
       <Route path="/:tenantId/transactions/scan/:trxNumber" element={<TransactionScanPage />} />
-      <Route path="/:tenantId/warehouse/items/scan/:uniqueId" element={<WarehouseItemScanPage />} />
+      <Route path="/:tenantId/warehouse/items/scan/:sku" element={<WarehouseItemScanPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>

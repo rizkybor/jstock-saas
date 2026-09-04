@@ -20,7 +20,6 @@ class PublicItemResource extends JsonResource
         return [
             'name' => $this->name,
             'sku' => $this->sku,
-            'unique_id' => $this->unique_id,
             'barcode_type' => $this->barcode_type,
             'category_name' => $this->whenLoaded('category', fn () => $this->category?->name),
             'unit' => $this->unit,

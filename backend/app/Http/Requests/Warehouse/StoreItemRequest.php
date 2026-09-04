@@ -35,8 +35,13 @@ class StoreItemRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'sku' => ['nullable', 'string', 'max:100', Rule::unique('warehouse_items', 'sku')->where('tenant_id', tenant_id())],
-            'unique_id' => ['nullable', 'string', 'max:100'],
+            // A barcode encodes the item's sku directly (already unique per
+            // tenant) instead of a separate generated id, so sku becomes
+            // required the moment a barcode type is requested.
+            'sku' => [
+                'required_with:barcode_type', 'nullable', 'string', 'max:100',
+                Rule::unique('warehouse_items', 'sku')->where('tenant_id', tenant_id()),
+            ],
             'barcode_type' => ['nullable', Rule::in(TenantBarcodeSetting::effectiveSettingsFor(tenant_id())['warehouse-item']['allowed_types'])],
             'warehouse_category_id' => ['nullable', Rule::exists('warehouse_categories', 'id')->where('tenant_id', tenant_id())],
             'unit' => ['required', 'string', 'max:20'],

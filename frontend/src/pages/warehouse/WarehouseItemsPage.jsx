@@ -35,7 +35,6 @@ const EMPTY_FORM = {
   notes: "",
   is_inventory_grant: false,
   inventory_grant_source: "",
-  unique_id: "",
   barcode_type: "",
 };
 const EMPTY_CATEGORY_FORM = { name: "" };
@@ -136,7 +135,7 @@ export default function WarehouseItemsPage() {
   };
 
   // Handheld scanners act like a keyboard, typing the barcode's raw value
-  // (unique_id) into whichever field has focus, then pressing Enter — this
+  // (sku) into whichever field has focus, then pressing Enter — this
   // resolves that scan to the same item detail view as clicking a row.
   const handleScanSubmit = async (event) => {
     event.preventDefault();
@@ -148,22 +147,21 @@ export default function WarehouseItemsPage() {
       setDetailItem(data.data);
       setScanCode("");
     } catch {
-      setScanError("Barang dengan ID unik tersebut tidak ditemukan.");
+      setScanError("Barang dengan SKU tersebut tidak ditemukan.");
     } finally {
       setScanning(false);
     }
   };
 
-  const barcodeUrlFor = (item) =>
-    barcodeImageUrl(item.barcode_type, barcodePayload(item.barcode_type, item.unique_id, warehouseItemScanUrl(tenantId, item.unique_id)));
+  const barcodeUrlFor = (item) => barcodeImageUrl(item.barcode_type, barcodePayload(item.barcode_type, item.sku, warehouseItemScanUrl(tenantId, item.sku)));
 
   const handleDownloadLabel = async (item) => {
     setDownloadingLabel(true);
     try {
       await downloadBarcodeLabel({
         barcodeUrl: barcodeUrlFor(item),
-        lines: [item.name, `SKU: ${item.sku ?? "-"}`, `Kategori: ${item.category_name ?? "-"}`, `ID Unik: ${item.unique_id ?? "-"}`],
-        fileName: `label-${item.unique_id ?? item.id}.png`,
+        lines: [item.name, `SKU: ${item.sku ?? "-"}`, `Kategori: ${item.category_name ?? "-"}`],
+        fileName: `label-${item.sku ?? item.id}.png`,
       });
     } catch {
       setError("Gagal mengunduh label barcode.");
@@ -195,7 +193,6 @@ export default function WarehouseItemsPage() {
       notes: item.notes ?? "",
       is_inventory_grant: item.is_inventory_grant ?? false,
       inventory_grant_source: item.inventory_grant_source ?? "",
-      unique_id: item.unique_id ?? "",
       barcode_type: item.barcode_type ?? "",
     });
   };
@@ -221,6 +218,9 @@ export default function WarehouseItemsPage() {
     const errors = validate(form, VALIDATION_RULES);
     if (form.is_inventory_grant && !form.inventory_grant_source.trim()) {
       errors.inventory_grant_source = "Sumber inventaris/hibah wajib diisi.";
+    }
+    if (form.barcode_type && !form.sku.trim()) {
+      errors.sku = "SKU wajib diisi untuk membuat barcode.";
     }
     setFieldErrors(errors);
     if (hasErrors(errors)) return;
@@ -423,7 +423,7 @@ export default function WarehouseItemsPage() {
           <form onSubmit={handleScanSubmit} className="mb-3 flex flex-wrap items-start gap-3">
             <div className="min-w-56 flex-1">
               <Input
-                placeholder="Scan barcode / ID Unik barang..."
+                placeholder="Scan barcode / SKU barang..."
                 value={scanCode}
                 onChange={(e) => {
                   setScanCode(e.target.value);
@@ -584,19 +584,11 @@ export default function WarehouseItemsPage() {
               />
             )}
 
-            <Input
-              label="ID Unik"
-              name="unique_id"
-              placeholder="BRG-..."
-              value={form.unique_id}
-              onChange={(e) => setForm({ ...form, unique_id: e.target.value })}
-            />
-
             {barcodeSettings.enabled && barcodeSettings.allowed_types.length > 0 && (
               <div>
                 <Select
                   label="Jenis Barcode"
-                  hint="Kosongkan jika barang ini tidak perlu barcode. ID Unik akan digenerate otomatis bila belum diisi."
+                  hint="Kosongkan jika barang ini tidak perlu barcode. Barcode akan mengenkode SKU barang — isi SKU dahulu."
                   value={form.barcode_type}
                   onChange={(e) => setForm({ ...form, barcode_type: e.target.value })}
                 >
@@ -607,9 +599,9 @@ export default function WarehouseItemsPage() {
                     </option>
                   ))}
                 </Select>
-                {formMode === "edit" && form.barcode_type && form.unique_id && (
+                {formMode === "edit" && form.barcode_type && form.sku && (
                   <img
-                    src={barcodeImageUrl(form.barcode_type, barcodePayload(form.barcode_type, form.unique_id, warehouseItemScanUrl(tenantId, form.unique_id)))}
+                    src={barcodeImageUrl(form.barcode_type, barcodePayload(form.barcode_type, form.sku, warehouseItemScanUrl(tenantId, form.sku)))}
                     alt="Preview barcode"
                     className="mt-2 h-16 rounded border border-border bg-white p-1"
                   />
@@ -672,7 +664,7 @@ export default function WarehouseItemsPage() {
               </div>
             )}
 
-            {detailItem.barcode_type && detailItem.unique_id && (
+            {detailItem.barcode_type && detailItem.sku && (
               <div className="rounded-lg border border-border bg-surface-2 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Barcode Barang</div>
@@ -687,12 +679,7 @@ export default function WarehouseItemsPage() {
                 <div className="flex items-center gap-4">
                   <img src={barcodeUrlFor(detailItem)} alt="Barcode" className="h-20 shrink-0 rounded bg-white p-2" />
                   <div className="text-sm text-ink">
-                    <div>
-                      <span className="text-ink-muted">SKU:</span> {detailItem.sku ?? "-"}
-                    </div>
-                    <div>
-                      <span className="text-ink-muted">ID Unik:</span> {detailItem.unique_id}
-                    </div>
+                    <span className="text-ink-muted">SKU:</span> {detailItem.sku}
                   </div>
                 </div>
               </div>

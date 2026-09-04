@@ -8,7 +8,6 @@ use App\Http\Requests\Warehouse\UpdateItemRequest;
 use App\Http\Resources\Warehouse\ItemResource;
 use App\Models\WarehouseItem;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class ItemController extends Controller
 {
@@ -56,13 +55,7 @@ class ItemController extends Controller
 
     public function store(StoreItemRequest $request)
     {
-        $data = $this->withGrantPricingRule($request->validated());
-
-        // A barcode needs something to encode — auto-generate a unique_id
-        // when a barcode type was requested but none was supplied.
-        $data['unique_id'] = $data['unique_id'] ?? (! empty($data['barcode_type']) ? $this->generateUniqueId() : null);
-
-        $item = WarehouseItem::create($data);
+        $item = WarehouseItem::create($this->withGrantPricingRule($request->validated()));
 
         return response()->json([
             'success' => true,
@@ -81,13 +74,13 @@ class ItemController extends Controller
     }
 
     /**
-     * Resolves the value encoded in an item's barcode (its unique_id) back
-     * to the full item detail — what the barcode's scan-detail page loads
-     * once opened.
+     * Resolves the value encoded in an item's barcode (its sku) back to the
+     * full item detail — what the barcode's scan-detail page loads once
+     * opened.
      */
-    public function lookup(string $uniqueId)
+    public function lookup(string $sku)
     {
-        $item = WarehouseItem::where('unique_id', $uniqueId)->with(['stocks', 'category'])->firstOrFail();
+        $item = WarehouseItem::where('sku', $sku)->with(['stocks', 'category'])->firstOrFail();
 
         return response()->json([
             'success' => true,
@@ -99,11 +92,6 @@ class ItemController extends Controller
     public function update(UpdateItemRequest $request, WarehouseItem $item)
     {
         $data = $this->withGrantPricingRule($request->validated(), $item->is_inventory_grant);
-
-        $wantsBarcode = $data['barcode_type'] ?? $item->barcode_type;
-        if (! empty($wantsBarcode) && empty($data['unique_id'] ?? $item->unique_id)) {
-            $data['unique_id'] = $this->generateUniqueId();
-        }
 
         $item->update($data);
 
@@ -125,14 +113,5 @@ class ItemController extends Controller
             'data' => null,
             'message' => 'Barang gudang berhasil dihapus.',
         ]);
-    }
-
-    private function generateUniqueId(): string
-    {
-        do {
-            $candidate = 'BRG-'.strtoupper(Str::random(8));
-        } while (WarehouseItem::withoutGlobalScopes()->where('unique_id', $candidate)->exists());
-
-        return $candidate;
     }
 }

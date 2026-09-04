@@ -5,16 +5,17 @@ import { Alert, Skeleton } from "../../components/ui";
 import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, warehouseItemScanUrl } from "../../utils/barcode";
 
 /**
- * Landing page for a scanned warehouse item QR code — mirrors
- * ProductScanPage for the Inventory Gas Kalibrasi module. Rendered outside
- * AppLayout and outside auth entirely (see App.jsx): a scanned label is
- * opened by whoever has the physical item, not just a logged-in tenant
- * user, so it hits the public /public/:tenantId/warehouse/items/scan/:uniqueId
- * endpoint — which also omits price_buy/price_sell the authenticated view
- * has, since those shouldn't be visible to anyone who scans the label.
+ * Landing page for a scanned Warehouse General item QR code —
+ * barcodeImageUrl() encodes this exact route for the "qr" type, so a phone
+ * camera opens straight here instead of just showing raw text. Rendered
+ * outside AppLayout and outside auth entirely (see App.jsx): a scanned
+ * label is opened by whoever has the physical item, not just a logged-in
+ * tenant user, so it hits the public /public/:tenantId/warehouse/items/
+ * scan/:sku endpoint — which also omits price figures the authenticated
+ * view has, since those shouldn't be visible to anyone who scans the label.
  */
 export default function WarehouseItemScanPage() {
-  const { tenantId, uniqueId } = useParams();
+  const { tenantId, sku } = useParams();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,11 +24,11 @@ export default function WarehouseItemScanPage() {
     setLoading(true);
     setError(null);
     apiClient
-      .get(`/public/${tenantId}/warehouse/items/scan/${encodeURIComponent(uniqueId)}`)
+      .get(`/public/${tenantId}/warehouse/items/scan/${encodeURIComponent(sku)}`)
       .then(({ data }) => setItem(data.data))
-      .catch((err) => setError(err.response?.data?.message ?? "Barang dengan ID unik tersebut tidak ditemukan."))
+      .catch((err) => setError(err.response?.data?.message ?? "Barang dengan SKU tersebut tidak ditemukan."))
       .finally(() => setLoading(false));
-  }, [tenantId, uniqueId]);
+  }, [tenantId, sku]);
 
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-bg px-4 py-8">
@@ -58,10 +59,6 @@ export default function WarehouseItemScanPage() {
               <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Satuan</div>
               <div className="text-ink">{item.unit ?? "-"}</div>
             </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">ID Unik</div>
-              <div className="text-ink">{item.unique_id ?? "-"}</div>
-            </div>
           </div>
 
           {item.barcode_type && (
@@ -70,7 +67,7 @@ export default function WarehouseItemScanPage() {
                 Barcode — {barcodeTypeLabel(item.barcode_type)}
               </div>
               <img
-                src={barcodeImageUrl(item.barcode_type, barcodePayload(item.barcode_type, item.unique_id, warehouseItemScanUrl(tenantId, item.unique_id)))}
+                src={barcodeImageUrl(item.barcode_type, barcodePayload(item.barcode_type, item.sku, warehouseItemScanUrl(tenantId, item.sku)))}
                 alt="Barcode"
                 className="h-20 rounded bg-white p-2"
               />
