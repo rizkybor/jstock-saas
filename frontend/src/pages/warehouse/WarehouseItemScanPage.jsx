@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Badge, Skeleton } from "../../components/ui";
-import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, warehouseItemScanUrl } from "../../utils/barcode";
+import { barcodeImageUrl, barcodePayload, warehouseItemScanUrl } from "../../utils/barcode";
 
 const MOVEMENT_BADGE = { in: "active", out: "rejected", adjustment: "pending" };
 const MOVEMENT_LABEL = { in: "Masuk", out: "Keluar", adjustment: "Penyesuaian" };
@@ -62,7 +62,7 @@ export default function WarehouseItemScanPage() {
           <div className="rounded-lg border border-border bg-surface-2 p-3">
             {item.barcode_type && (
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Barcode — {barcodeTypeLabel(item.barcode_type)}
+                Product Unique
               </div>
             )}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">

@@ -520,6 +520,7 @@ export default function ProductsPage() {
               label="Item Detail"
               name="item_detail"
               placeholder="Deskripsi tabung, tekanan, sertifikat, dll."
+              hint="Detail ini akan tampil publik saat barang di-scan lewat QR Code — jangan isi info rahasia (mis. harga, pemasok, atau data internal lain)."
               value={form.item_detail}
               onChange={(e) => setForm({ ...form, item_detail: e.target.value })}
             />
@@ -688,6 +689,7 @@ export default function ProductsPage() {
               label="Item Detail"
               name="item_detail"
               placeholder="Deskripsi tabung, tekanan, sertifikat, dll."
+              hint="Detail ini akan tampil publik saat barang di-scan lewat QR Code — jangan isi info rahasia (mis. harga, pemasok, atau data internal lain)."
               value={form.item_detail}
               onChange={(e) => setForm({ ...form, item_detail: e.target.value })}
             />

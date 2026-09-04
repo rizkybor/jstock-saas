@@ -609,7 +609,12 @@ export default function WarehouseItemsPage() {
               </div>
             )}
 
-            <Textarea label="Catatan" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            <Textarea
+              label="Catatan"
+              hint="Catatan ini akan tampil publik saat barang di-scan lewat QR Code — jangan isi info rahasia (mis. harga, pemasok, atau data internal lain)."
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
 
             {formError && <Alert>{formError}</Alert>}
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import apiClient from "../../api/client";
 import { Alert, Badge, Skeleton } from "../../components/ui";
-import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, productScanUrl } from "../../utils/barcode";
+import { barcodeImageUrl, barcodePayload, productScanUrl } from "../../utils/barcode";
 
 const formatDate = (value) =>
   value ? new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-";
@@ -52,7 +52,7 @@ export default function ProductScanPage() {
           {product.barcode_type && (
             <div className="rounded-lg border border-border bg-surface-2 p-3">
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Barcode — {barcodeTypeLabel(product.barcode_type)}
+                Product Unique
               </div>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <img
