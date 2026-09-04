@@ -80,7 +80,15 @@ class PublicScanController extends Controller
         $item = WarehouseItem::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('sku', $sku)
-            ->with(['category', 'stocks'])
+            ->with([
+                'category',
+                'stocks',
+                // Latest 20 only — PublicItemResource walks these backwards
+                // from the current total to compute each entry's
+                // stock_before/stock_after, so it needs them newest-first
+                // and contiguous (no gaps) back from "now".
+                'movements' => fn ($query) => $query->with('location')->orderByDesc('created_at')->orderByDesc('id')->limit(20),
+            ])
             ->firstOrFail();
 
         return response()->json([

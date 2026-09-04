@@ -151,6 +151,46 @@ class WarehouseItemBarcodeTest extends TestCase
             ->assertJsonPath('data.total_stock', 42);
     }
 
+    public function test_a_public_warehouse_item_scan_includes_movement_history_with_before_and_after_stock(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableWarehouseModule($tenant);
+        $owner = $this->makeOwner($tenant);
+        $location = WarehouseLocation::create(['tenant_id' => $tenant->id, 'name' => 'Gudang Utama']);
+        $item = WarehouseItem::create(['tenant_id' => $tenant->id, 'name' => 'Kardus Sedang', 'unit' => 'pcs', 'sku' => 'SKU-HISTORY']);
+
+        // 0 -> 100 (in), then 100 -> 50 (out).
+        $this->actingAs($owner, 'sanctum')->postJson('/api/warehouse/stock/move', [
+            'warehouse_item_id' => $item->id,
+            'warehouse_location_id' => $location->id,
+            'type' => 'in',
+            'qty' => 100,
+        ])->assertCreated();
+        $this->actingAs($owner, 'sanctum')->postJson('/api/warehouse/stock/move', [
+            'warehouse_item_id' => $item->id,
+            'warehouse_location_id' => $location->id,
+            'type' => 'out',
+            'qty' => 50,
+        ])->assertCreated();
+
+        $response = $this->getJson("/api/public/{$tenant->token}/warehouse/items/scan/{$item->sku}")
+            ->assertOk()
+            ->assertJsonPath('data.total_stock', 50)
+            ->assertJsonCount(2, 'data.movements');
+
+        // Newest first: the "out" that brought it from 100 down to 50...
+        $response->assertJsonPath('data.movements.0.type', 'out')
+            ->assertJsonPath('data.movements.0.qty', 50)
+            ->assertJsonPath('data.movements.0.stock_before', 100)
+            ->assertJsonPath('data.movements.0.stock_after', 50)
+            ->assertJsonPath('data.movements.0.location_name', 'Gudang Utama')
+            // ...then the "in" that started it at 0 and brought it to 100.
+            ->assertJsonPath('data.movements.1.type', 'in')
+            ->assertJsonPath('data.movements.1.qty', 100)
+            ->assertJsonPath('data.movements.1.stock_before', 0)
+            ->assertJsonPath('data.movements.1.stock_after', 100);
+    }
+
     public function test_public_warehouse_item_scan_is_blocked_when_the_tenant_lacks_the_module(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
