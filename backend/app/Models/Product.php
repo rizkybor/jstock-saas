@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'tenant_id', 'product_series_id', 'name', 'lot_batch', 'unique_id', 'barcode_type', 'item_detail',
@@ -32,5 +33,10 @@ class Product extends Model
     public function series(): BelongsTo
     {
         return $this->belongsTo(ProductSeries::class, 'product_series_id');
+    }
+
+    public function transactionItems(): HasMany
+    {
+        return $this->hasMany(TransactionItem::class);
     }
 }

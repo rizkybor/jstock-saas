@@ -42,7 +42,20 @@ class PublicScanController extends Controller
         $product = Product::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('unique_id', $uniqueId)
-            ->with('series')
+            ->with([
+                'series',
+                // Latest 20 only, newest first — the transaction relation
+                // is already tenant-scoped transitively (a product's own
+                // tenant_id filter above already guarantees this), but the
+                // explicit where() here is defense in depth since
+                // TransactionItem itself carries no tenant_id column.
+                'transactionItems' => fn ($query) => $query
+                    ->whereHas('transaction', fn ($q) => $q->where('tenant_id', $tenant->id))
+                    ->with('transaction')
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id')
+                    ->limit(20),
+            ])
             ->firstOrFail();
 
         return response()->json([

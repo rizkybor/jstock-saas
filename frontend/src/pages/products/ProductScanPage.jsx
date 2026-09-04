@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import apiClient from "../../api/client";
-import { Alert, Skeleton } from "../../components/ui";
+import { Alert, Badge, Skeleton } from "../../components/ui";
 import { barcodeImageUrl, barcodePayload, barcodeTypeLabel, productScanUrl } from "../../utils/barcode";
 
 const formatDate = (value) =>
@@ -97,6 +97,28 @@ export default function ProductScanPage() {
               <div className="text-sm text-ink">{product.item_detail}</div>
             </div>
           )}
+
+          <div className="mt-4">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Riwayat Transaksi</div>
+            {!product.transactions || product.transactions.length === 0 ? (
+              <p className="text-sm text-ink-muted">Belum ada riwayat transaksi untuk barang ini.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {product.transactions.map((trx) => (
+                  <div key={trx.id} className="rounded-lg border border-border bg-surface-2 p-3">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm font-semibold text-ink">{trx.trx_number}</span>
+                      <Badge status={trx.status}>{trx.status}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-ink-muted">
+                      <span>{new Date(trx.created_at).toLocaleString("id-ID")}</span>
+                      <span>Qty: {trx.qty}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

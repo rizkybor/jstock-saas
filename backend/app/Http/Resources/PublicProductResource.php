@@ -12,6 +12,10 @@ class PublicProductResource extends JsonResource
      * omits unit_cost/additional_cost/grand_total_cost/cogs (see ProductResource
      * for the full, login-only version): those are internal cost figures that
      * shouldn't be exposed to whoever scans a label off a physical item.
+     * Transaction history is included (trx_number/status/qty/date only) but
+     * deliberately omits the recipient/client name and any money figure
+     * (total, item subtotal) — showing who received this product would let
+     * anyone scanning the label harvest a tenant's customer list.
      *
      * @return array<string, mixed>
      */
@@ -26,6 +30,13 @@ class PublicProductResource extends JsonResource
             'series' => new PublicProductSeriesResource($this->whenLoaded('series')),
             'stock_qty' => $this->stock_qty,
             'input_date' => $this->input_date?->toDateString(),
+            'transactions' => $this->when($this->relationLoaded('transactionItems'), fn () => $this->transactionItems->map(fn ($item) => [
+                'id' => $item->transaction->id,
+                'trx_number' => $item->transaction->trx_number,
+                'status' => $item->transaction->status,
+                'qty' => $item->qty,
+                'created_at' => $item->transaction->created_at,
+            ])->values()),
         ];
     }
 }

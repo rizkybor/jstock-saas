@@ -47,6 +47,45 @@ class PublicScanControllerTest extends TestCase
             ->assertJsonMissingPath('data.series.unit_cost');
     }
 
+    public function test_a_product_scan_includes_its_transaction_history_without_recipient_or_money_figures(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableInventoryModule($tenant);
+        $owner = User::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Owner',
+            'email' => "owner-{$tenant->id}@test.local",
+            'password' => 'password123',
+            'role' => 'owner',
+            'is_active' => true,
+        ]);
+        $product = $this->makeProduct($tenant, 40);
+
+        $transactionId = $this->actingAs($owner, 'sanctum')->postJson('/api/transactions', [
+            'sender_name' => 'Pak Joko',
+            'recipient_name' => 'PT Rahasia Dagang',
+            'no_invoice' => true,
+            'address' => ['label' => 'Kantor'],
+            'items' => [['product_id' => $product->id, 'qty' => 7]],
+        ])->json('data.id');
+        $trxNumber = Transaction::find($transactionId)->trx_number;
+
+        $response = $this->getJson("/api/public/{$tenant->token}/products/scan/{$product->unique_id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.transactions')
+            ->assertJsonPath('data.transactions.0.trx_number', $trxNumber)
+            ->assertJsonPath('data.transactions.0.status', 'pending')
+            ->assertJsonPath('data.transactions.0.qty', 7);
+
+        // The recipient's identity and any money figure never leave the server.
+        $entry = $response->json('data.transactions.0');
+        $this->assertArrayNotHasKey('recipient', $entry);
+        $this->assertArrayNotHasKey('client', $entry);
+        $this->assertArrayNotHasKey('total', $entry);
+        $this->assertArrayNotHasKey('subtotal', $entry);
+        $this->assertStringNotContainsString('Rahasia Dagang', $response->getContent());
+    }
+
     public function test_a_product_cannot_be_looked_up_through_another_tenants_token(): void
     {
         $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
