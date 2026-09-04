@@ -80,6 +80,13 @@ export default function WarehouseItemScanPage() {
             </div>
           </div>
 
+          {item.notes && (
+            <div className="mt-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Catatan</div>
+              <div className="text-sm text-ink">{item.notes}</div>
+            </div>
+          )}
+
           {item.barcode_type && (
             <div className="mt-4 rounded-lg border border-border bg-surface-2 p-3">
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">

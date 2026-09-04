@@ -129,6 +129,33 @@ class WarehouseItemBarcodeTest extends TestCase
             ->assertJsonMissingPath('data.price_sell');
     }
 
+    public function test_a_public_warehouse_item_scan_includes_notes_when_present(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);
+        $this->enableWarehouseModule($tenant);
+        $withNotes = WarehouseItem::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Kardus Sedang',
+            'unit' => 'pcs',
+            'sku' => 'SKU-WITHNOTES',
+            'notes' => 'Simpan di tempat kering.',
+        ]);
+        $withoutNotes = WarehouseItem::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Kardus Besar',
+            'unit' => 'pcs',
+            'sku' => 'SKU-NONOTES',
+        ]);
+
+        $this->getJson("/api/public/{$tenant->token}/warehouse/items/scan/{$withNotes->sku}")
+            ->assertOk()
+            ->assertJsonPath('data.notes', 'Simpan di tempat kering.');
+
+        $this->getJson("/api/public/{$tenant->token}/warehouse/items/scan/{$withoutNotes->sku}")
+            ->assertOk()
+            ->assertJsonPath('data.notes', null);
+    }
+
     public function test_a_public_warehouse_item_scan_includes_current_stock(): void
     {
         $tenant = Tenant::create(['name' => 'Tenant A', 'slug' => 'tenant-a', 'status' => 'trial']);

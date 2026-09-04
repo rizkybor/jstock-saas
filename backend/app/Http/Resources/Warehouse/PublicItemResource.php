@@ -26,6 +26,7 @@ class PublicItemResource extends JsonResource
             'barcode_type' => $this->barcode_type,
             'category_name' => $this->whenLoaded('category', fn () => $this->category?->name),
             'unit' => $this->unit,
+            'notes' => $this->notes,
             'total_stock' => $this->when($this->relationLoaded('stocks'), fn () => (int) $this->stocks->sum('qty')),
             'movements' => $this->when($this->relationLoaded('movements') && $this->relationLoaded('stocks'), fn () => $this->movementHistory()),
         ];
