@@ -389,7 +389,7 @@ export default function WarehouseItemsPage() {
     <div>
       <PageHeader
         title="Data Barang Gudang"
-        description="Master barang untuk modul Warehouse General — field dasar tanpa LOT/Batch."
+        description="Master barang untuk modul Warehouse General."
         action={
           tab === "items" ? (
             <Can permission="warehouse-items.create">
