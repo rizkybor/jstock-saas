@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { ChevronDownIcon, ChevronUpIcon } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import Can from "../routes/Can";
 import { CORE_NAV_ITEMS, MODULE_NAV_ITEMS } from "../utils/moduleNav";
@@ -13,6 +14,7 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const moduleNavItems =
     user?.role === "super_admin"
       ? PLATFORM_NAV_ITEMS
@@ -73,14 +75,19 @@ export default function AppLayout() {
               </Link>
             </Can>
           ))}
+        </nav>
 
-          {coreNavItems.length > 0 && (
-            <div className="mt-2 flex flex-col gap-0.5 border-t border-border pt-2">
+        <div className="mt-3 border-t border-border pt-3">
+          {accountMenuOpen && coreNavItems.length > 0 && (
+            <div className="mb-1.5 flex flex-col gap-0.5">
               {coreNavItems.map((item) => (
                 <Can permission={item.permission} key={item.to}>
                   <Link
                     to={item.to}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setAccountMenuOpen(false);
+                    }}
                     className={`cursor-pointer rounded-[5px] border-l-[3px] px-3 py-2.5 text-[15px] font-medium transition-colors ${
                       location.pathname === item.to
                         ? "border-primary bg-primary-soft text-primary"
@@ -93,10 +100,13 @@ export default function AppLayout() {
               ))}
             </div>
           )}
-        </nav>
 
-        <div className="mt-3 border-t border-border pt-3">
-          <div className="flex items-center gap-2.5 px-2 py-1.5">
+          <button
+            type="button"
+            aria-expanded={accountMenuOpen}
+            onClick={() => setAccountMenuOpen((open) => !open)}
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-surface-2"
+          >
             <div className="flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[13px] font-bold text-primary">
               {initial}
             </div>
@@ -104,7 +114,12 @@ export default function AppLayout() {
               <div className="truncate text-sm font-semibold text-ink">{user?.name}</div>
               <div className="truncate text-xs text-ink-faint capitalize">Role: {user?.role}</div>
             </div>
-          </div>
+            {accountMenuOpen ? (
+              <ChevronDownIcon className="h-4 w-4 shrink-0 text-ink-muted" />
+            ) : (
+              <ChevronUpIcon className="h-4 w-4 shrink-0 text-ink-muted" />
+            )}
+          </button>
           <button
             onClick={logout}
             className="mt-1.5 w-full cursor-pointer rounded-lg border border-border bg-surface py-2 text-sm font-medium text-ink hover:bg-surface-2"

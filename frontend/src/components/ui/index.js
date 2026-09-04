@@ -17,6 +17,8 @@ export { default as Skeleton } from "./Skeleton";
 export { default as StatTile } from "./StatTile";
 export { default as Tabs } from "./Tabs";
 export { default as Textarea } from "./Textarea";
+export { default as ChevronDownIcon } from "./icons/ChevronDownIcon";
+export { default as ChevronUpIcon } from "./icons/ChevronUpIcon";
 export { default as DocumentIcon } from "./icons/DocumentIcon";
 export { default as EyeIcon } from "./icons/EyeIcon";
 export { default as GearIcon } from "./icons/GearIcon";
