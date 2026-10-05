@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -13,6 +14,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // On Postgres, enum() is implemented as a CHECK constraint that
+        // ->change() doesn't drop on its own — leaving the old enum values
+        // enforced even after the column becomes a plain string.
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->string('role', 50)->default('operator')->change();
         });

@@ -31,7 +31,7 @@ class DashboardReportTest extends TestCase
         $this->enableInventoryModule($tenant);
         $owner = $this->makeUser($tenant, 'owner');
 
-        Product::create([
+        $product = Product::create([
             'tenant_id' => $tenant->id,
             'name' => 'Gas A',
             'lot_batch' => 'LOT-1',
@@ -46,7 +46,7 @@ class DashboardReportTest extends TestCase
             'recipient_name' => 'Andi',
             'no_invoice' => true,
             'address' => ['label' => 'Kantor'],
-            'items' => [['product_id' => 1, 'qty' => 1]],
+            'items' => [['product_id' => $product->id, 'qty' => 1]],
         ])->assertCreated();
 
         $response = $this->actingAs($owner, 'sanctum')
