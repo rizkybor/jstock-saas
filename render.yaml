@@ -1,0 +1,75 @@
+databases:
+  - name: jstock-db
+    databaseName: jstock
+    user: jstock
+    plan: free
+
+services:
+  - type: web
+    name: jstock-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: jstock
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false
+      - key: APP_LOCALE
+        value: id
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: jstock-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: jstock-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: jstock-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: jstock-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: jstock-db
+          property: password
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: FILESYSTEM_DISK
+        value: public
+      - key: LOG_CHANNEL
+        value: stderr
+
+  - type: web
+    name: jstock-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      # Must match jstock-backend's real public URL exactly (Render appends a
+      # random suffix to the name if "jstock-backend" is already taken under
+      # this account) — verify in the dashboard after the backend's first
+      # deploy and update this value + redeploy if it differs.
+      - key: VITE_API_URL
+        value: https://jstock-backend.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
